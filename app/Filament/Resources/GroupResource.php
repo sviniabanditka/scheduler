@@ -19,22 +19,22 @@ class GroupResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationLabel = 'Группы';
+    protected static ?string $navigationLabel = 'Групи';
 
-    protected static ?string $modelLabel = 'Группа';
+    protected static ?string $modelLabel = 'Група';
 
-    protected static ?string $pluralModelLabel = 'Группы';
+    protected static ?string $pluralModelLabel = 'Групи';
 
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationGroup = 'Управление данными';
+    protected static ?string $navigationGroup = 'Управління даними';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Название группы')
+                    ->label('Назва групи')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
@@ -53,7 +53,7 @@ class GroupResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Название группы')
+                    ->label('Назва групи')
                     ->searchable()
                     ->sortable(),
                 
@@ -63,7 +63,7 @@ class GroupResource extends Resource
                     ->sortable(),
                 
                 Tables\Columns\BadgeColumn::make('course.number')
-                    ->label('Номер курса')
+                    ->label('Номер курсу')
                     ->formatStateUsing(fn (int $state): string => "{$state} курс")
                     ->colors([
                         'primary' => 1,
@@ -73,13 +73,13 @@ class GroupResource extends Resource
                     ]),
                 
                 Tables\Columns\TextColumn::make('schedules_count')
-                    ->label('Занятий')
+                    ->label('Занять')
                     ->counts('schedules')
                     ->badge()
                     ->color('info'),
                 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создана')
+                    ->label('Створено')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -92,7 +92,7 @@ class GroupResource extends Resource
                     ->preload(),
                 
                 Tables\Filters\SelectFilter::make('course_number')
-                    ->label('Номер курса')
+                    ->label('Номер курсу')
                     ->relationship('course', 'number')
                     ->options([
                         1 => '1 курс',
@@ -102,7 +102,7 @@ class GroupResource extends Resource
                     ]),
                 
                 Tables\Filters\Filter::make('has_schedules')
-                    ->label('С расписанием')
+                    ->label('З розкладом')
                     ->query(fn (Builder $query): Builder => $query->has('schedules')),
             ])
             ->actions([

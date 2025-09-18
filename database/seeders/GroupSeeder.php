@@ -17,7 +17,7 @@ class GroupSeeder extends Seeder
         $courses = Course::all();
         
         foreach ($courses as $course) {
-            // Создаем по 3 группы для каждого курса
+            // Create 3 groups for each course
             for ($i = 1; $i <= 3; $i++) {
                 Group::create([
                     'name' => "{$course->name}-{$i}",

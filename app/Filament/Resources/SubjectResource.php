@@ -20,35 +20,35 @@ class SubjectResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
-    protected static ?string $navigationLabel = 'Предметы';
+    protected static ?string $navigationLabel = 'Предмети';
 
     protected static ?string $modelLabel = 'Предмет';
 
-    protected static ?string $pluralModelLabel = 'Предметы';
+    protected static ?string $pluralModelLabel = 'Предмети';
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationGroup = 'Управление данными';
+    protected static ?string $navigationGroup = 'Управління даними';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Название предмета')
+                    ->label('Назва предмету')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
                 
                 Forms\Components\Select::make('teacher_id')
-                    ->label('Преподаватель')
+                    ->label('Викладач')
                     ->relationship('teacher', 'name')
                     ->searchable()
                     ->preload()
                     ->required(),
                 
                 Forms\Components\Select::make('type')
-                    ->label('Тип занятия')
+                    ->label('Тип заняття')
                     ->options(Subject::TYPES)
                     ->required()
                     ->default(Subject::TYPE_LECTURE),
@@ -60,12 +60,12 @@ class SubjectResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Название')
+                    ->label('Назва')
                     ->searchable()
                     ->sortable(),
                 
                 Tables\Columns\TextColumn::make('teacher.name')
-                    ->label('Преподаватель')
+                    ->label('Викладач')
                     ->searchable()
                     ->sortable(),
                 
@@ -78,30 +78,30 @@ class SubjectResource extends Resource
                     ]),
                 
                 Tables\Columns\TextColumn::make('schedules_count')
-                    ->label('Занятий')
+                    ->label('Занять')
                     ->counts('schedules')
                     ->badge()
                     ->color('info'),
                 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
+                    ->label('Створено')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('teacher')
-                    ->label('Преподаватель')
+                    ->label('Викладач')
                     ->relationship('teacher', 'name')
                     ->searchable()
                     ->preload(),
                 
                 Tables\Filters\SelectFilter::make('type')
-                    ->label('Тип занятия')
+                    ->label('Тип заняття')
                     ->options(Subject::TYPES),
                 
                 Tables\Filters\Filter::make('has_schedules')
-                    ->label('С расписанием')
+                    ->label('З розкладом')
                     ->query(fn (Builder $query): Builder => $query->has('schedules')),
             ])
             ->actions([

@@ -19,22 +19,22 @@ class TeacherResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static ?string $navigationLabel = 'Преподаватели';
+    protected static ?string $navigationLabel = 'Викладачі';
 
-    protected static ?string $modelLabel = 'Преподаватель';
+    protected static ?string $modelLabel = 'Викладач';
 
-    protected static ?string $pluralModelLabel = 'Преподаватели';
+    protected static ?string $pluralModelLabel = 'Викладачі';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Управление данными';
+    protected static ?string $navigationGroup = 'Управління даними';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('ФИО')
+                    ->label('ПІБ')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
@@ -50,7 +50,7 @@ class TeacherResource extends Resource
                     ->label('Телефон')
                     ->tel()
                     ->maxLength(20)
-                    ->placeholder('+7 (495) 123-45-67'),
+                    ->placeholder('+380 (67) 123-45-67'),
             ]);
     }
 
@@ -59,7 +59,7 @@ class TeacherResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('ФИО')
+                    ->label('ПІБ')
                     ->searchable()
                     ->sortable(),
                 
@@ -75,30 +75,30 @@ class TeacherResource extends Resource
                     ->toggleable(),
                 
                 Tables\Columns\TextColumn::make('subjects_count')
-                    ->label('Предметов')
+                    ->label('Предметів')
                     ->counts('subjects')
                     ->badge()
                     ->color('success'),
                 
                 Tables\Columns\TextColumn::make('schedules_count')
-                    ->label('Занятий')
+                    ->label('Занять')
                     ->counts('schedules')
                     ->badge()
                     ->color('info'),
                 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
+                    ->label('Створено')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\Filter::make('has_subjects')
-                    ->label('С предметами')
+                    ->label('З предметами')
                     ->query(fn (Builder $query): Builder => $query->has('subjects')),
                 
                 Tables\Filters\Filter::make('has_schedules')
-                    ->label('С расписанием')
+                    ->label('З розкладом')
                     ->query(fn (Builder $query): Builder => $query->has('schedules')),
             ])
             ->actions([

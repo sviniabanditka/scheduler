@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
 class ScheduleController extends Controller
 {
     /**
-     * Показать главную страницу с расписанием
+     * Show the main page with schedule
      */
     public function index()
     {
@@ -22,7 +22,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Получить группы для выбранного курса
+     * Get groups for selected course
      */
     public function getCourseGroups(int $courseId): JsonResponse
     {
@@ -34,7 +34,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Получить расписание для группы и недели
+     * Get schedule for group and week
      */
     public function getSchedule(int $groupId, int $week): JsonResponse
     {
@@ -43,19 +43,19 @@ class ScheduleController extends Controller
             ->where('week_number', $week)
             ->get();
 
-        // Создаем матрицу расписания (день × время)
+        // Create schedule matrix (day × time)
         $scheduleMatrix = [];
         $timeSlots = array_keys(Schedule::TIME_SLOTS);
         $daysOfWeek = array_keys(Schedule::DAYS_OF_WEEK);
 
-        // Инициализируем пустую матрицу
+        // Initialize empty matrix
         foreach ($daysOfWeek as $day) {
             foreach ($timeSlots as $time) {
                 $scheduleMatrix[$day][$time] = null;
             }
         }
 
-        // Заполняем матрицу данными из базы
+        // Fill matrix with data from database
         foreach ($schedules as $schedule) {
             $scheduleMatrix[$schedule->day_of_week][$schedule->time_slot] = [
                 'id' => $schedule->id,
@@ -76,7 +76,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Получить список недель с датами
+     * Get list of weeks with dates
      */
     public function getWeeks(): JsonResponse
     {
@@ -84,30 +84,30 @@ class ScheduleController extends Controller
         $currentYear = date('Y');
         $startDate = new \DateTime("{$currentYear}-01-01");
         
-        // Находим первый понедельник года
+        // Find first Monday of the year
         while ($startDate->format('N') != 1) {
             $startDate->add(new \DateInterval('P1D'));
         }
         
         for ($week = 1; $week <= 52; $week++) {
             $endDate = clone $startDate;
-            $endDate->add(new \DateInterval('P6D')); // +6 дней = воскресенье
+            $endDate->add(new \DateInterval('P6D')); // +6 days = Sunday
             
             $weeks[] = [
                 'number' => $week,
                 'start_date' => $startDate->format('d.m.Y'),
                 'end_date' => $endDate->format('d.m.Y'),
-                'label' => "Неделя {$week} ({$startDate->format('d.m')} - {$endDate->format('d.m.Y')})"
+                'label' => "Тиждень {$week} ({$startDate->format('d.m')} - {$endDate->format('d.m.Y')})"
             ];
             
-            $startDate->add(new \DateInterval('P7D')); // +7 дней = следующая неделя
+            $startDate->add(new \DateInterval('P7D')); // +7 days = next week
         }
         
         return response()->json($weeks);
     }
 
     /**
-     * Получить список всех курсов
+     * Get list of all courses
      */
     public function getCourses(): JsonResponse
     {
@@ -116,7 +116,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Получить список всех предметов
+     * Get list of all subjects
      */
     public function getSubjects(): JsonResponse
     {
@@ -125,7 +125,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Получить список всех преподавателей
+     * Get list of all teachers
      */
     public function getTeachers(): JsonResponse
     {
@@ -134,7 +134,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Создать новое занятие
+     * Create new lesson
      */
     public function storeSchedule(Request $request): JsonResponse
     {
@@ -149,7 +149,7 @@ class ScheduleController extends Controller
                 'classroom' => 'nullable|string|max:50',
             ]);
 
-            // Проверяем конфликты
+            // Check for conflicts
             $this->validateScheduleConflicts($request->all());
 
             $schedule = Schedule::create($request->all());
@@ -157,7 +157,7 @@ class ScheduleController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Занятие успешно создано',
+                'message' => 'Заняття успішно створено',
                 'schedule' => $schedule
             ]);
         } catch (\Exception $e) {
@@ -169,7 +169,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Обновить занятие
+     * Update lesson
      */
     public function updateSchedule(Request $request, int $id): JsonResponse
     {
@@ -186,7 +186,7 @@ class ScheduleController extends Controller
                 'classroom' => 'nullable|string|max:50',
             ]);
 
-            // Проверяем конфликты (исключая текущее занятие)
+            // Check for conflicts (excluding current lesson)
             $this->validateScheduleConflicts($request->all(), $id);
 
             $schedule->update($request->all());
@@ -194,7 +194,7 @@ class ScheduleController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Занятие успешно обновлено',
+                'message' => 'Заняття успішно оновлено',
                 'schedule' => $schedule
             ]);
         } catch (\Exception $e) {
@@ -206,7 +206,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Удалить занятие
+     * Delete lesson
      */
     public function deleteSchedule(int $id): JsonResponse
     {
@@ -215,16 +215,16 @@ class ScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Занятие успешно удалено'
+            'message' => 'Заняття успішно видалено'
         ]);
     }
 
     /**
-     * Проверить конфликты расписания
+     * Check schedule conflicts
      */
     private function validateScheduleConflicts(array $data, ?int $excludeId = null): void
     {
-        // Проверяем конфликт группы
+        // Check group conflict
         $groupQuery = Schedule::where('group_id', $data['group_id'])
             ->where('day_of_week', $data['day_of_week'])
             ->where('time_slot', $data['time_slot']);
@@ -240,10 +240,10 @@ class ScheduleController extends Controller
         }
 
         if ($groupQuery->exists()) {
-            throw new \Exception('Конфликт расписания: группа уже имеет занятие в это время');
+            throw new \Exception('Конфлікт розкладу: група вже має заняття в цей час');
         }
 
-        // Проверяем конфликт преподавателя
+        // Check teacher conflict
         $teacherQuery = Schedule::where('teacher_id', $data['teacher_id'])
             ->where('day_of_week', $data['day_of_week'])
             ->where('time_slot', $data['time_slot']);
@@ -259,7 +259,7 @@ class ScheduleController extends Controller
         }
 
         if ($teacherQuery->exists()) {
-            throw new \Exception('Конфликт расписания: преподаватель уже занят в это время');
+            throw new \Exception('Конфлікт розкладу: викладач вже зайнятий в цей час');
         }
     }
 }

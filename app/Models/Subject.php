@@ -17,12 +17,12 @@ class Subject extends Model
         'type',
     ];
 
-    // Константы для типов предметов
+    // Constants for subject types
     public const TYPE_LECTURE = 'lecture';
     public const TYPE_PRACTICE = 'practice';
 
     public const TYPES = [
-        self::TYPE_LECTURE => 'Лекция',
+        self::TYPE_LECTURE => 'Лекція',
         self::TYPE_PRACTICE => 'Практика',
     ];
 

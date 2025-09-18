@@ -19,28 +19,28 @@ class CourseResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static ?string $navigationLabel = 'Курсы';
+    protected static ?string $navigationLabel = 'Курси';
 
     protected static ?string $modelLabel = 'Курс';
 
-    protected static ?string $pluralModelLabel = 'Курсы';
+    protected static ?string $pluralModelLabel = 'Курси';
 
     protected static ?int $navigationSort = 3;
 
-    protected static ?string $navigationGroup = 'Управление данными';
+    protected static ?string $navigationGroup = 'Управління даними';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Название курса')
+                    ->label('Назва курсу')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
                 
                 Forms\Components\Select::make('number')
-                    ->label('Номер курса')
+                    ->label('Номер курсу')
                     ->options([
                         1 => '1 курс',
                         2 => '2 курс',
@@ -56,7 +56,7 @@ class CourseResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Название')
+                    ->label('Назва')
                     ->searchable()
                     ->sortable(),
                 
@@ -71,20 +71,20 @@ class CourseResource extends Resource
                     ]),
                 
                 Tables\Columns\TextColumn::make('groups_count')
-                    ->label('Групп')
+                    ->label('Груп')
                     ->counts('groups')
                     ->badge()
                     ->color('info'),
                 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
+                    ->label('Створено')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('number')
-                    ->label('Номер курса')
+                    ->label('Номер курсу')
                     ->options([
                         1 => '1 курс',
                         2 => '2 курс',
@@ -93,7 +93,7 @@ class CourseResource extends Resource
                     ]),
                 
                 Tables\Filters\Filter::make('has_groups')
-                    ->label('С группами')
+                    ->label('З групами')
                     ->query(fn (Builder $query): Builder => $query->has('groups')),
             ])
             ->actions([

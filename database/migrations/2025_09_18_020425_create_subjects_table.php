@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('teacher_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['lecture', 'practice']); // лекция/практика
+            $table->enum('type', ['lecture', 'practice']); // lecture/practice
             $table->timestamps();
         });
     }

@@ -18,43 +18,43 @@ class SubjectSeeder extends Seeder
         
         $subjects = [
             [
-                'name' => 'Программирование на Python',
+                'name' => 'Програмування на Python',
                 'type' => Subject::TYPE_LECTURE,
             ],
             [
-                'name' => 'Программирование на Python',
+                'name' => 'Програмування на Python',
                 'type' => Subject::TYPE_PRACTICE,
             ],
             [
-                'name' => 'Базы данных',
+                'name' => 'Бази даних',
                 'type' => Subject::TYPE_LECTURE,
             ],
             [
-                'name' => 'Базы данных',
+                'name' => 'Бази даних',
                 'type' => Subject::TYPE_PRACTICE,
             ],
             [
-                'name' => 'Веб-разработка',
+                'name' => 'Веб-розробка',
                 'type' => Subject::TYPE_LECTURE,
             ],
             [
-                'name' => 'Веб-разработка',
+                'name' => 'Веб-розробка',
                 'type' => Subject::TYPE_PRACTICE,
             ],
             [
-                'name' => 'Алгоритмы и структуры данных',
+                'name' => 'Алгоритми та структури даних',
                 'type' => Subject::TYPE_LECTURE,
             ],
             [
-                'name' => 'Алгоритмы и структуры данных',
+                'name' => 'Алгоритми та структури даних',
                 'type' => Subject::TYPE_PRACTICE,
             ],
             [
-                'name' => 'Машинное обучение',
+                'name' => 'Машинне навчання',
                 'type' => Subject::TYPE_LECTURE,
             ],
             [
-                'name' => 'Машинное обучение',
+                'name' => 'Машинне навчання',
                 'type' => Subject::TYPE_PRACTICE,
             ],
         ];

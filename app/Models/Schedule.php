@@ -20,7 +20,7 @@ class Schedule extends Model
         'classroom',
     ];
 
-    // Константы для дней недели
+    // Constants for days of the week
     public const MONDAY = 1;
     public const TUESDAY = 2;
     public const WEDNESDAY = 3;
@@ -30,16 +30,16 @@ class Schedule extends Model
     public const SUNDAY = 7;
 
     public const DAYS_OF_WEEK = [
-        self::MONDAY => 'Понедельник',
-        self::TUESDAY => 'Вторник',
-        self::WEDNESDAY => 'Среда',
-        self::THURSDAY => 'Четверг',
-        self::FRIDAY => 'Пятница',
-        self::SATURDAY => 'Суббота',
-        self::SUNDAY => 'Воскресенье',
+        self::MONDAY => 'Понеділок',
+        self::TUESDAY => 'Вівторок',
+        self::WEDNESDAY => 'Середа',
+        self::THURSDAY => 'Четвер',
+        self::FRIDAY => 'П\'ятниця',
+        self::SATURDAY => 'Субота',
+        self::SUNDAY => 'Неділя',
     ];
 
-    // Константы для временных слотов
+    // Constants for time slots
     public const TIME_SLOTS = [
         '08:00-09:30' => '08:00-09:30',
         '09:45-11:15' => '09:45-11:15',
@@ -79,7 +79,7 @@ class Schedule extends Model
      */
     public function getDayOfWeekLabelAttribute(): string
     {
-        return self::DAYS_OF_WEEK[$this->day_of_week] ?? 'Неизвестно';
+        return self::DAYS_OF_WEEK[$this->day_of_week] ?? 'Невідомо';
     }
 
     /**
