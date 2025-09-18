@@ -132,11 +132,11 @@
         <!-- Форма фильтров -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Фильтры расписания
+                Фільтри розкладу
             </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Выбор курса -->
+                <!-- Course selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Курс
@@ -144,48 +144,48 @@
                     <select x-model="selectedCourse" 
                             @change="onCourseChange()"
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                        <option value="">Выберите курс</option>
+                        <option value="">Оберіть курс</option>
                         <template x-for="course in courses" :key="course.id">
                             <option :value="course.id" x-text="course.name + ' (' + course.number + ' курс)'"></option>
                         </template>
                     </select>
                 </div>
 
-                <!-- Выбор группы -->
+                <!-- Group selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Группа
+                        Група
                     </label>
                     <select x-model="selectedGroup" 
                             @change="onGroupChange()"
                             :disabled="!selectedCourse || loadingGroups"
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="">Выберите группу</option>
+                        <option value="">Оберіть групу</option>
                         <template x-for="group in groups" :key="group.id">
                             <option :value="group.id" x-text="group.name"></option>
                         </template>
                     </select>
                     <div x-show="loadingGroups" class="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                        Загрузка групп...
+                        Завантаження груп...
                     </div>
                 </div>
 
-                <!-- Выбор недели -->
+                <!-- Week selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Неделя
+                        Тиждень
                     </label>
                     <select x-model="selectedWeek" 
                             @change="onWeekChange()"
                             :disabled="!selectedGroup || loadingWeeks"
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="">Выберите неделю</option>
+                        <option value="">Оберіть тиждень</option>
                         <template x-for="week in weeks" :key="week.number">
                             <option :value="week.number" x-text="week.label"></option>
                         </template>
                     </select>
                     <div x-show="loadingWeeks" class="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                        Загрузка недель...
+                        Завантаження тижнів...
                     </div>
                 </div>
             </div>
@@ -195,8 +195,8 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                    Управление расписанием
-                    <span x-show="selectedGroup" x-text="'для группы ' + getGroupName()"></span>
+                    Управління розкладом
+                    <span x-show="selectedGroup" x-text="'для групи ' + getGroupName()"></span>
                 </h2>
             </div>
 
@@ -207,7 +207,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Загрузка расписания...
+                    Завантаження розкладу...
                 </div>
             </div>
 
@@ -218,7 +218,7 @@
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
-                                        Время
+                                        Час
                                     </th>
                                     <template x-for="day in daysOfWeek" :key="day">
                                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 last:border-r-0">
@@ -239,19 +239,19 @@
                                                      x-transition:enter-end="opacity-100 scale-100"
                                                      class="p-2 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                                                      :class="getSubjectClass(getScheduleItem(day, timeSlot)?.subject_type)"
-                                                     :title="'Преподаватель: ' + getScheduleItem(day, timeSlot)?.teacher + (getScheduleItem(day, timeSlot)?.classroom ? '\\nАудитория: ' + getScheduleItem(day, timeSlot)?.classroom : '')"
+                                                     :title="'Викладач: ' + getScheduleItem(day, timeSlot)?.teacher + (getScheduleItem(day, timeSlot)?.classroom ? '\\nАудиторія: ' + getScheduleItem(day, timeSlot)?.classroom : '')"
                                                      @click="openEditModal(getScheduleItem(day, timeSlot)?.id, getScheduleItem(day, timeSlot)?.subject, getScheduleItem(day, timeSlot)?.teacher, getScheduleItem(day, timeSlot)?.classroom || '', day, timeSlot, getScheduleItem(day, timeSlot)?.week_number)">
                                                     <div class="font-medium truncate" x-text="getScheduleItem(day, timeSlot)?.subject"></div>
                                                     <div class="truncate" x-text="getScheduleItem(day, timeSlot)?.teacher"></div>
                                                     <div x-show="getScheduleItem(day, timeSlot)?.classroom" 
                                                          class="truncate" 
                                                          x-text="'Ауд. ' + getScheduleItem(day, timeSlot)?.classroom"></div>
-                                                    <div class="text-xs opacity-50 mt-1">Клик для редактирования</div>
+                                                    <div class="text-xs opacity-50 mt-1">Клік для редагування</div>
                                                 </div>
                                                 <div x-show="!getScheduleItem(day, timeSlot)" 
                                                      class="p-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 text-center cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"
                                                      @click="openAddModal(day, timeSlot)">
-                                                    <div class="text-xs">+ Добавить занятие</div>
+                                                    <div class="text-xs">+ Додати заняття</div>
                                                 </div>
                                             </td>
                                         </template>
@@ -263,14 +263,14 @@
                 </div>
 
             <!-- Сообщение о выборе группы и недели -->
-            <div x-show="!selectedGroup && !loadingSchedule" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div x-show="!selectedGroup && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
                 <div class="text-lg mb-2">📚</div>
-                <p>Выберите курс и группу для управления расписанием</p>
+                <p>Оберіть курс та групу для управління розкладом</p>
             </div>
             
-            <div x-show="selectedGroup && !selectedWeek && !loadingSchedule" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div x-show="selectedGroup && !selectedWeek && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
                 <div class="text-lg mb-2">📅</div>
-                <p>Выберите неделю для управления расписанием</p>
+                <p>Оберіть тиждень для управління розкладом</p>
             </div>
         </div>
 
@@ -298,7 +298,7 @@
                     <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" x-text="isEditing ? 'Редактировать занятие' : 'Добавить занятие'"></h3>
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" x-text="isEditing ? 'Редагувати заняття' : 'Додати заняття'"></h3>
                                 <div class="mt-4 space-y-4">
                                     <!-- Предмет -->
                                     <div>
@@ -308,7 +308,7 @@
                                         <select x-model="formData.subject_id"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 required>
-                                            <option value="">Выберите предмет</option>
+                                            <option value="">Оберіть предмет</option>
                                             <template x-for="subject in subjects" :key="subject.id">
                                                 <option :value="subject.id" x-text="subject.name"></option>
                                             </template>
@@ -318,12 +318,12 @@
                                     <!-- Преподаватель -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Преподаватель
+                                            Викладач
                                         </label>
                                         <select x-model="formData.teacher_id"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 required>
-                                            <option value="">Выберите преподавателя</option>
+                                            <option value="">Оберіть викладача</option>
                                             <template x-for="teacher in teachers" :key="teacher.id">
                                                 <option :value="teacher.id" x-text="teacher.name"></option>
                                             </template>
@@ -333,42 +333,42 @@
                                     <!-- Аудитория -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Аудитория
+                                            Аудиторія
                                         </label>
                                         <input type="text"
                                                x-model="formData.classroom"
                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                                               placeholder="Например: 101">
+                                               placeholder="Наприклад: 101">
                                     </div>
 
                                     <!-- День недели (только для добавления) -->
                                     <div x-show="!isEditing">
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            День недели
+                                            День тижня
                                         </label>
                                         <select x-model="formData.day_of_week"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 required>
-                                            <option value="">Выберите день</option>
-                                            <option value="1">Понедельник</option>
-                                            <option value="2">Вторник</option>
-                                            <option value="3">Среда</option>
-                                            <option value="4">Четверг</option>
-                                            <option value="5">Пятница</option>
-                                            <option value="6">Суббота</option>
-                                            <option value="7">Воскресенье</option>
+                                            <option value="">Оберіть день</option>
+                                            <option value="1">Понеділок</option>
+                                            <option value="2">Вівторок</option>
+                                            <option value="3">Середа</option>
+                                            <option value="4">Четвер</option>
+                                            <option value="5">П'ятниця</option>
+                                            <option value="6">Субота</option>
+                                            <option value="7">Неділя</option>
                                         </select>
                                     </div>
 
                                     <!-- Время (только для добавления) -->
                                     <div x-show="!isEditing">
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Время
+                                            Час
                                         </label>
                                         <select x-model="formData.time_slot"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 required>
-                                            <option value="">Выберите время</option>
+                                            <option value="">Оберіть час</option>
                                             <template x-for="(label, value) in timeSlots" :key="value">
                                                 <option :value="value" x-text="label"></option>
                                             </template>
@@ -378,12 +378,12 @@
                                     <!-- Неделя -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Неделя
+                                            Тиждень
                                         </label>
                                         <select x-model="formData.week_number"
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 required>
-                                            <option value="">Выберите неделю</option>
+                                            <option value="">Оберіть тиждень</option>
                                             <template x-for="week in weeks" :key="week.number">
                                                 <option :value="week.number" x-text="week.label"></option>
                                             </template>
@@ -396,22 +396,22 @@
                     <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                                 <button type="submit"
                                         :disabled="loading"
-                                        class="modal-button-save w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 dark:bg-blue-500 text-base font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        class="modal-button-save mr-3 mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 dark:bg-blue-500 text-base font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         style="background-color: #2563eb !important; color: #ffffff !important; border-color: #2563eb !important;">
-                            <span x-show="!loading" x-text="isEditing ? 'Сохранить' : 'Добавить'"></span>
+                            <span x-show="!loading" x-text="isEditing ? 'Зберегти' : 'Додати'"></span>
                             <span x-show="loading" class="flex items-center">
                                 <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                Сохранение...
+                                Збереження...
                             </span>
                         </button>
                                 <button type="button"
                                         @click="closeModal()"
                                         class="modal-button-cancel mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                                         style="background-color: #ffffff !important; color: #374151 !important; border-color: #d1d5db !important;">
-                            Отмена
+                            Скасувати
                         </button>
                     </div>
                 </form>
@@ -564,7 +564,7 @@
                     // Не перезаписываем daysOfWeek и timeSlots, они уже инициализированы
                     this.subjectTypes = data.subject_types;
                 } catch (error) {
-                    console.error('Ошибка загрузки расписания:', error);
+                    console.error('Error loading schedule:', error);
                     this.scheduleData = null;
                 } finally {
                     this.loadingSchedule = false;
@@ -579,7 +579,7 @@
             getDayName(day) {
                 const dayNames = {
                     1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 
-                    5: 'Пт', 6: 'Сб', 7: 'Вс'
+                    5: 'Пт', 6: 'Сб', 7: 'Нд'
                 };
                 return dayNames[day] || day;
             },
@@ -671,11 +671,11 @@
                         await this.loadSchedule(true);
                     } else {
                         // Показываем ошибку
-                        this.showNotification('error', result.message || 'Неизвестная ошибка');
+                        this.showNotification('error', result.message || 'Невідома помилка');
                     }
                 } catch (error) {
-                    console.error('Ошибка сохранения:', error);
-                    this.showNotification('error', 'Ошибка сохранения занятия: ' + error.message);
+                    console.error('Error saving:', error);
+                    this.showNotification('error', 'Помилка збереження заняття: ' + error.message);
                 } finally {
                     this.loading = false;
                 }
@@ -694,9 +694,9 @@
                 }
                 this.scheduleData[day][timeSlot] = {
                     id: newSchedule.id,
-                    subject: newSchedule.subject?.name || 'Неизвестный предмет',
+                    subject: newSchedule.subject?.name || 'Невідомий предмет',
                     subject_type: newSchedule.subject?.type || 'lecture',
-                    teacher: newSchedule.teacher?.name || 'Неизвестный преподаватель',
+                    teacher: newSchedule.teacher?.name || 'Невідомий викладач',
                     classroom: newSchedule.classroom,
                     week_number: newSchedule.week_number
                 };

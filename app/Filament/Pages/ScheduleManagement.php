@@ -29,11 +29,11 @@ class ScheduleManagement extends Page implements HasTable
 
     protected static string $view = 'filament.pages.schedule-management';
 
-    protected static ?string $navigationLabel = 'Управление расписанием';
+    protected static ?string $navigationLabel = 'Управління розкладом';
 
     protected static ?int $navigationSort = 6;
 
-    protected static ?string $navigationGroup = 'Расписание';
+    protected static ?string $navigationGroup = 'Розклад';
 
     public ?int $selectedCourse = null;
     public ?int $selectedGroup = null;
@@ -53,10 +53,10 @@ class ScheduleManagement extends Page implements HasTable
                     ->options(Course::all()->pluck('name', 'id'))
                     ->reactive()
                     ->afterStateUpdated(fn () => $this->selectedGroup = null)
-                    ->placeholder('Выберите курс'),
+                    ->placeholder('Оберіть курс'),
                 
                 Select::make('selectedGroup')
-                    ->label('Группа')
+                    ->label('Група')
                     ->options(function () {
                         if (!$this->selectedCourse) {
                             return [];
@@ -64,13 +64,13 @@ class ScheduleManagement extends Page implements HasTable
                         return Group::where('course_id', $this->selectedCourse)->pluck('name', 'id');
                     })
                     ->reactive()
-                    ->placeholder('Выберите группу'),
+                    ->placeholder('Оберіть групу'),
                 
                 Select::make('selectedWeek')
-                    ->label('Неделя')
-                    ->options(array_combine(range(1, 52), array_map(fn($i) => "Неделя {$i}", range(1, 52))))
+                    ->label('Тиждень')
+                    ->options(array_combine(range(1, 52), array_map(fn($i) => "Тиждень {$i}", range(1, 52))))
                     ->reactive()
-                    ->placeholder('Все недели'),
+                    ->placeholder('Всі тижні'),
             ])
             ->statePath('data');
     }
@@ -81,12 +81,12 @@ class ScheduleManagement extends Page implements HasTable
             ->query($this->getTableQuery())
             ->columns([
                 TextColumn::make('day_of_week')
-                    ->label('День недели')
-                    ->formatStateUsing(fn (int $state): string => Schedule::DAYS_OF_WEEK[$state] ?? 'Неизвестно')
+                    ->label('День тижня')
+                    ->formatStateUsing(fn (int $state): string => Schedule::DAYS_OF_WEEK[$state] ?? 'Невідомо')
                     ->sortable(),
                 
                 TextColumn::make('time_slot')
-                    ->label('Время')
+                    ->label('Час')
                     ->sortable(),
                 
                 TextColumn::make('subject.name')
@@ -94,16 +94,16 @@ class ScheduleManagement extends Page implements HasTable
                     ->searchable(),
                 
                 TextColumn::make('teacher.name')
-                    ->label('Преподаватель')
+                    ->label('Викладач')
                     ->searchable(),
                 
                 TextColumn::make('classroom')
-                    ->label('Аудитория')
-                    ->placeholder('Не указана'),
+                    ->label('Аудиторія')
+                    ->placeholder('Не вказана'),
                 
                 TextColumn::make('week_number')
-                    ->label('Неделя')
-                    ->formatStateUsing(fn (?int $state): string => $state ? "Неделя {$state}" : 'Все недели')
+                    ->label('Тиждень')
+                    ->formatStateUsing(fn (?int $state): string => $state ? "Тиждень {$state}" : 'Всі тижні')
                     ->sortable(),
             ])
             ->filters([
@@ -111,11 +111,11 @@ class ScheduleManagement extends Page implements HasTable
             ])
             ->actions([
                 Action::make('edit')
-                    ->label('Редактировать')
+                    ->label('Редагувати')
                     ->icon('heroicon-o-pencil')
                     ->form([
                         Select::make('group_id')
-                            ->label('Группа')
+                            ->label('Група')
                             ->options(Group::all()->pluck('name', 'id'))
                             ->required(),
                         
@@ -125,27 +125,27 @@ class ScheduleManagement extends Page implements HasTable
                             ->required(),
                         
                         Select::make('teacher_id')
-                            ->label('Преподаватель')
+                            ->label('Викладач')
                             ->options(Teacher::all()->pluck('name', 'id'))
                             ->required(),
                         
                         Select::make('day_of_week')
-                            ->label('День недели')
+                            ->label('День тижня')
                             ->options(Schedule::DAYS_OF_WEEK)
                             ->required(),
                         
                         Select::make('time_slot')
-                            ->label('Время')
+                            ->label('Час')
                             ->options(Schedule::TIME_SLOTS)
                             ->required(),
                         
                         Select::make('week_number')
-                            ->label('Неделя')
-                            ->options(array_combine(range(1, 52), array_map(fn($i) => "Неделя {$i}", range(1, 52))))
+                            ->label('Тиждень')
+                            ->options(array_combine(range(1, 52), array_map(fn($i) => "Тиждень {$i}", range(1, 52))))
                             ->nullable(),
                         
                         TextInput::make('classroom')
-                            ->label('Аудитория')
+                            ->label('Аудиторія')
                             ->maxLength(50),
                     ])
                     ->fillForm(fn (Schedule $record): array => [
@@ -163,7 +163,7 @@ class ScheduleManagement extends Page implements HasTable
                     }),
                 
                 Action::make('delete')
-                    ->label('Удалить')
+                    ->label('Видалити')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -171,7 +171,7 @@ class ScheduleManagement extends Page implements HasTable
             ])
             ->bulkActions([
                 BulkAction::make('delete')
-                    ->label('Удалить выбранные')
+                    ->label('Видалити обрані')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -212,7 +212,7 @@ class ScheduleManagement extends Page implements HasTable
         }
 
         if ($query->exists()) {
-            throw new \Exception('Конфликт расписания: группа уже имеет занятие в это время');
+            throw new \Exception('Конфлікт розкладу: група вже має заняття в цей час');
         }
 
         $teacherQuery = Schedule::where('teacher_id', $data['teacher_id'])
@@ -224,7 +224,7 @@ class ScheduleManagement extends Page implements HasTable
         }
 
         if ($teacherQuery->exists()) {
-            throw new \Exception('Конфликт расписания: преподаватель уже занят в это время');
+            throw new \Exception('Конфлікт розкладу: викладач вже зайнятий в цей час');
         }
     }
 }

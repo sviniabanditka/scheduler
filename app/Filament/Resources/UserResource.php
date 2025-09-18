@@ -20,11 +20,11 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationLabel = 'Администраторы';
+    protected static ?string $navigationLabel = 'Адміністратори';
 
-    protected static ?string $modelLabel = 'Администратор';
+    protected static ?string $modelLabel = 'Адміністратор';
 
-    protected static ?string $pluralModelLabel = 'Администраторы';
+    protected static ?string $pluralModelLabel = 'Адміністратори';
 
     protected static ?int $navigationSort = 5;
 
@@ -35,7 +35,7 @@ class UserResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Имя')
+                    ->label('Ім\'я')
                     ->required()
                     ->maxLength(255),
                 
@@ -55,7 +55,7 @@ class UserResource extends Resource
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state)),
                 
                 Forms\Components\DateTimePicker::make('email_verified_at')
-                    ->label('Email подтвержден')
+                    ->label('Email підтверджено')
                     ->nullable(),
             ]);
     }
@@ -65,7 +65,7 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Имя')
+                    ->label('Ім\'я')
                     ->searchable()
                     ->sortable(),
                 
@@ -76,7 +76,7 @@ class UserResource extends Resource
                     ->copyable(),
                 
                 Tables\Columns\IconColumn::make('email_verified_at')
-                    ->label('Email подтвержден')
+                    ->label('Email підтверджено')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
@@ -84,18 +84,18 @@ class UserResource extends Resource
                     ->falseColor('danger'),
                 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
+                    ->label('Створено')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\Filter::make('verified')
-                    ->label('Подтвержденные')
+                    ->label('Підтверджені')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('email_verified_at')),
                 
                 Tables\Filters\Filter::make('unverified')
-                    ->label('Неподтвержденные')
+                    ->label('Непідтверджені')
                     ->query(fn (Builder $query): Builder => $query->whereNull('email_verified_at')),
             ])
             ->actions([

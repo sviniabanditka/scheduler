@@ -24,11 +24,11 @@ class FilamentServiceProvider extends ServiceProvider
         Filament::serving(function () {
             Filament::registerNavigationGroups([
                 NavigationGroup::make()
-                    ->label('Управление данными')
+                    ->label('Управління даними')
                     ->collapsed(false),
                 
                 NavigationGroup::make()
-                    ->label('Расписание')
+                    ->label('Розклад')
                     ->collapsed(false),
                 
                 NavigationGroup::make()

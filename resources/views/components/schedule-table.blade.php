@@ -5,7 +5,7 @@
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
-                    Время
+                    Час
                 </th>
                 <template x-for="day in daysOfWeek" :key="day">
                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 last:border-r-0">
