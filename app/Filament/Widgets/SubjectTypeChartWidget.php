@@ -12,6 +12,8 @@ class SubjectTypeChartWidget extends ChartWidget
     
     protected static ?int $sort = 5;
     
+    protected int | string | array $columnSpan = 'full';
+    
     protected function getData(): array
     {
         $typeData = Schedule::join('subjects', 'schedules.subject_id', '=', 'subjects.id')
