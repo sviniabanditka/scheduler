@@ -37,10 +37,26 @@ class ScheduleManagement extends Page implements HasTable
 
     public ?int $selectedCourse = null;
     public ?int $selectedGroup = null;
-    public ?int $selectedWeek = null;
+    public ?string $startDate = null;
+    public ?string $endDate = null;
 
     public function mount(): void
     {
+        // Set default date range to current week
+        $today = new \DateTime();
+        $dayOfWeek = $today->format('N'); // 1 = Monday, 7 = Sunday
+        
+        // Calculate start of week (Monday)
+        $startOfWeek = clone $today;
+        $startOfWeek->modify('-' . ($dayOfWeek - 1) . ' days');
+        
+        // Calculate end of week (Sunday)
+        $endOfWeek = clone $startOfWeek;
+        $endOfWeek->modify('+6 days');
+        
+        $this->startDate = $startOfWeek->format('Y-m-d');
+        $this->endDate = $endOfWeek->format('Y-m-d');
+        
         $this->form->fill();
     }
 
@@ -66,11 +82,15 @@ class ScheduleManagement extends Page implements HasTable
                     ->reactive()
                     ->placeholder('Оберіть групу'),
                 
-                Select::make('selectedWeek')
-                    ->label('Тиждень')
-                    ->options(array_combine(range(1, 52), array_map(fn($i) => "Тиждень {$i}", range(1, 52))))
+                \Filament\Forms\Components\DatePicker::make('startDate')
+                    ->label('Дата початку')
                     ->reactive()
-                    ->placeholder('Всі тижні'),
+                    ->afterStateUpdated(fn () => $this->validateDateRange()),
+                
+                \Filament\Forms\Components\DatePicker::make('endDate')
+                    ->label('Дата закінчення')
+                    ->reactive()
+                    ->afterStateUpdated(fn () => $this->validateDateRange()),
             ])
             ->statePath('data');
     }
@@ -104,6 +124,12 @@ class ScheduleManagement extends Page implements HasTable
                 TextColumn::make('week_number')
                     ->label('Тиждень')
                     ->formatStateUsing(fn (?int $state): string => $state ? "Тиждень {$state}" : 'Всі тижні')
+                    ->sortable(),
+                
+                TextColumn::make('date')
+                    ->label('Дата')
+                    ->date('d.m.Y')
+                    ->placeholder('Не вказана (повторюване)')
                     ->sortable(),
             ])
             ->filters([
@@ -144,6 +170,11 @@ class ScheduleManagement extends Page implements HasTable
                             ->options(array_combine(range(1, 52), array_map(fn($i) => "Тиждень {$i}", range(1, 52))))
                             ->nullable(),
                         
+                        \Filament\Forms\Components\DatePicker::make('date')
+                            ->label('Дата')
+                            ->nullable()
+                            ->helperText('Залиште пустим для повторюваного заняття'),
+                        
                         TextInput::make('classroom')
                             ->label('Аудиторія')
                             ->maxLength(50),
@@ -155,6 +186,7 @@ class ScheduleManagement extends Page implements HasTable
                         'day_of_week' => $record->day_of_week,
                         'time_slot' => $record->time_slot,
                         'week_number' => $record->week_number,
+                        'date' => $record->date,
                         'classroom' => $record->classroom,
                     ])
                     ->action(function (Schedule $record, array $data): void {
@@ -194,11 +226,37 @@ class ScheduleManagement extends Page implements HasTable
             });
         }
 
-        if ($this->selectedWeek) {
-            $query->where('week_number', $this->selectedWeek);
+        if ($this->startDate && $this->endDate) {
+            $query->where(function ($q) {
+                $q->where(function ($subQ) {
+                    // Schedules with specific date within range
+                    $subQ->whereNotNull('date')
+                         ->whereBetween('date', [$this->startDate, $this->endDate]);
+                })->orWhere(function ($subQ) {
+                    // Schedules without date restrictions (recurring)
+                    $subQ->whereNull('date');
+                });
+            });
         }
 
         return $query;
+    }
+
+    public function validateDateRange(): void
+    {
+        if ($this->startDate && $this->endDate) {
+            $start = new \DateTime($this->startDate);
+            $end = new \DateTime($this->endDate);
+            $diff = $start->diff($end);
+            
+            if ($diff->days > 14) {
+                $this->addError('endDate', 'Діапазон дат не може перевищувати 2 тижні (14 днів)');
+            }
+            
+            if ($start > $end) {
+                $this->addError('endDate', 'Дата закінчення не може бути раніше дати початку');
+            }
+        }
     }
 
     protected function validateSchedule(array $data, ?int $excludeId = null): void
@@ -206,6 +264,18 @@ class ScheduleManagement extends Page implements HasTable
         $query = Schedule::where('group_id', $data['group_id'])
             ->where('day_of_week', $data['day_of_week'])
             ->where('time_slot', $data['time_slot']);
+
+        if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
+            $query->where('week_number', $data['week_number']);
+        } else {
+            $query->whereNull('week_number');
+        }
+
+        if (isset($data['date']) && $data['date'] !== null && $data['date'] !== '') {
+            $query->where('date', $data['date']);
+        } else {
+            $query->whereNull('date');
+        }
 
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
@@ -218,6 +288,18 @@ class ScheduleManagement extends Page implements HasTable
         $teacherQuery = Schedule::where('teacher_id', $data['teacher_id'])
             ->where('day_of_week', $data['day_of_week'])
             ->where('time_slot', $data['time_slot']);
+
+        if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
+            $teacherQuery->where('week_number', $data['week_number']);
+        } else {
+            $teacherQuery->whereNull('week_number');
+        }
+
+        if (isset($data['date']) && $data['date'] !== null && $data['date'] !== '') {
+            $teacherQuery->where('date', $data['date']);
+        } else {
+            $teacherQuery->whereNull('date');
+        }
 
         if ($excludeId) {
             $teacherQuery->where('id', '!=', $excludeId);

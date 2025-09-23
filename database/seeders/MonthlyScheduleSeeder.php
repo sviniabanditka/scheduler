@@ -9,55 +9,90 @@ use App\Models\Group;
 use App\Models\Subject;
 use App\Models\Teacher;
 
-class ScheduleSeeder extends Seeder
+class MonthlyScheduleSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        // Используем текущий месяц и год
+        $year = date('Y');
+        $month = date('m');
+        
+        $this->generateScheduleForMonth($year, $month);
+    }
+    
+    /**
+     * Устанавливает команду для вывода информации
+     */
+    public function setCommand($command): void
+    {
+        $this->command = $command;
+    }
+    
+    /**
+     * Генерирует расписание для конкретного месяца
+     */
+    public function generateScheduleForMonth(int $year, int $month): void
+    {
         $groups = Group::all();
         $subjects = Subject::all();
         $teachers = Teacher::all();
         
-        $timeSlots = array_keys(Schedule::TIME_SLOTS);
-        $daysOfWeek = array_keys(Schedule::DAYS_OF_WEEK);
-        $classrooms = ['101', '102', '103', '201', '202', '203', '301', '302', '303'];
+        if ($groups->isEmpty() || $subjects->isEmpty() || $teachers->isEmpty()) {
+            $this->command->error('Необходимо сначала создать группы, предметы и преподавателей!');
+            return;
+        }
         
-        // Получаем текущий месяц
-        $currentDate = new \DateTime();
-        $year = $currentDate->format('Y');
-        $month = $currentDate->format('m');
+        $timeSlots = array_keys(Schedule::TIME_SLOTS);
+        $classrooms = ['101', '102', '103', '201', '202', '203', '301', '302', '303'];
         
         // Получаем первый и последний день месяца
         $firstDayOfMonth = new \DateTime("{$year}-{$month}-01");
         $lastDayOfMonth = new \DateTime($firstDayOfMonth->format('Y-m-t'));
         
+        $this->command->info("Генерируем расписание для {$firstDayOfMonth->format('F Y')}...");
+        
+        $totalLessons = 0;
+        
         // Создаем расписание для каждой группы
         foreach ($groups as $group) {
-            // Создаем конкретные занятия на каждый день месяца
-            $this->createMonthlySchedule($group, $subjects, $teachers, $classrooms, $timeSlots, $daysOfWeek, $firstDayOfMonth, $lastDayOfMonth);
+            $groupLessons = $this->createGroupMonthlySchedule(
+                $group, 
+                $subjects, 
+                $teachers, 
+                $classrooms, 
+                $timeSlots, 
+                $firstDayOfMonth, 
+                $lastDayOfMonth
+            );
+            $totalLessons += $groupLessons;
+            
+            $this->command->info("Создано {$groupLessons} занятий для группы {$group->name}");
         }
+        
+        $this->command->info("Всего создано {$totalLessons} занятий для {$groups->count()} групп");
     }
     
-    
     /**
-     * Создает конкретные занятия на каждый день месяца
+     * Создает расписание для одной группы на месяц
      */
-    private function createMonthlySchedule($group, $subjects, $teachers, $classrooms, $timeSlots, $daysOfWeek, $firstDay, $lastDay): void
+    private function createGroupMonthlySchedule($group, $subjects, $teachers, $classrooms, $timeSlots, $firstDay, $lastDay): int
     {
+        $lessonsCreated = 0;
         $currentDay = clone $firstDay;
         
         while ($currentDay <= $lastDay) {
             $dayOfWeek = $currentDay->format('N'); // 1 = Monday, 7 = Sunday
             
-            // Создаем 2-4 занятия в день (кроме выходных)
+            // Создаем занятия только в рабочие дни
             if ($dayOfWeek <= 5) { // Понедельник - Пятница
-                $numberOfLessons = rand(2, 4);
+                // Количество занятий в день (2-5)
+                $numberOfLessons = rand(2, 5);
                 
-                // Выбираем случайные временные слоты
+                // Выбираем случайные временные слоты (исключаем слишком ранние и поздние)
                 $availableSlots = array_filter($timeSlots, function($slot) {
-                    // Исключаем слишком ранние и поздние слоты
                     return !in_array($slot, ['08:00-09:30', '18:30-20:00']);
                 });
                 
@@ -90,11 +125,15 @@ class ScheduleSeeder extends Seeder
                             'date' => $currentDay->format('Y-m-d'),
                             'classroom' => $classroom,
                         ]);
+                        
+                        $lessonsCreated++;
                     }
                 }
             }
             
             $currentDay->add(new \DateInterval('P1D'));
         }
+        
+        return $lessonsCreated;
     }
 }

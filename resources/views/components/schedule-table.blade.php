@@ -7,9 +7,10 @@
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
                     Час
                 </th>
-                <template x-for="day in daysOfWeek" :key="day">
+                <template x-for="dateInfo in dateRange" :key="dateInfo.date">
                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 last:border-r-0">
-                        <span x-text="getDayName(day)"></span>
+                        <div x-text="dateInfo.day_name"></div>
+                        <div class="text-xs font-normal" x-text="dateInfo.formatted"></div>
                     </th>
                 </template>
             </tr>
@@ -18,35 +19,35 @@
             <template x-for="timeSlot in timeSlots" :key="timeSlot">
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white" x-text="timeSlot"></td>
-                    <template x-for="day in daysOfWeek" :key="day">
+                    <template x-for="dateInfo in dateRange" :key="dateInfo.date">
                         <td class="px-2 py-3 text-center">
-                            <div x-show="getScheduleItem(day, timeSlot)" 
+                            <div x-show="getScheduleItem(dateInfo.date, timeSlot)" 
                                  x-transition:enter="transition ease-out duration-200"
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
                                  class="p-2 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                                 :class="getSubjectColor(getScheduleItem(day, timeSlot)?.subject_type)"
-                                 :title="'Преподаватель: ' + getScheduleItem(day, timeSlot)?.teacher + (getScheduleItem(day, timeSlot)?.classroom ? '\\nАудитория: ' + getScheduleItem(day, timeSlot)?.classroom : '')"
+                                 :class="getSubjectColor(getScheduleItem(dateInfo.date, timeSlot)?.subject_type)"
+                                 :title="'Преподаватель: ' + getScheduleItem(dateInfo.date, timeSlot)?.teacher + (getScheduleItem(dateInfo.date, timeSlot)?.classroom ? '\\nАудитория: ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom : '')"
                                  @if($editable)
-                                 @click="openEditModal(getScheduleItem(day, timeSlot)?.id, getScheduleItem(day, timeSlot)?.subject, getScheduleItem(day, timeSlot)?.teacher, getScheduleItem(day, timeSlot)?.classroom || '', day, timeSlot, getScheduleItem(day, timeSlot)?.week_number)"
+                                 @click="openEditModal(getScheduleItem(dateInfo.date, timeSlot)?.id, getScheduleItem(dateInfo.date, timeSlot)?.subject, getScheduleItem(dateInfo.date, timeSlot)?.teacher, getScheduleItem(dateInfo.date, timeSlot)?.classroom || '', dateInfo.date, timeSlot, getScheduleItem(dateInfo.date, timeSlot)?.week_number)"
                                  @endif>
-                                <div class="font-medium truncate" x-text="getScheduleItem(day, timeSlot)?.subject"></div>
-                                <div class="text-gray-600 dark:text-gray-400 truncate" x-text="getScheduleItem(day, timeSlot)?.teacher"></div>
-                                <div x-show="getScheduleItem(day, timeSlot)?.classroom" 
+                                <div class="font-medium truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.subject"></div>
+                                <div class="text-gray-600 dark:text-gray-400 truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.teacher"></div>
+                                <div x-show="getScheduleItem(dateInfo.date, timeSlot)?.classroom" 
                                      class="text-gray-500 dark:text-gray-500 truncate" 
-                                     x-text="'Ауд. ' + getScheduleItem(day, timeSlot)?.classroom"></div>
+                                     x-text="'Ауд. ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom"></div>
                                 @if($editable)
                                 <div class="text-xs opacity-50 mt-1">Клик для редактирования</div>
                                 @endif
                             </div>
                             @if($editable)
-                            <div x-show="!getScheduleItem(day, timeSlot)" 
+                            <div x-show="!getScheduleItem(dateInfo.date, timeSlot)" 
                                  class="p-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 text-center cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"
-                                 @click="openAddModal(day, timeSlot)">
+                                 @click="openAddModal(dateInfo.date, timeSlot)">
                                 <div class="text-xs">+ Добавить занятие</div>
                             </div>
                             @else
-                            <div x-show="!getScheduleItem(day, timeSlot)" 
+                            <div x-show="!getScheduleItem(dateInfo.date, timeSlot)" 
                                  class="p-2 text-gray-400 dark:text-gray-500 text-xs italic">
                                 Свободно
                             </div>
@@ -181,6 +182,18 @@
                                             <option :value="week.number" x-text="week.label"></option>
                                         </template>
                                     </select>
+                                </div>
+
+                                <!-- Дата -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Дата
+                                    </label>
+                                    <input type="date" 
+                                           x-model="formData.date" 
+                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                           placeholder="Дата занятия"
+                                           required>
                                 </div>
                             </div>
                         </div>

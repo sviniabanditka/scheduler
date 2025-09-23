@@ -57,23 +57,29 @@
                     </div>
                 </div>
 
-                <!-- Week selection -->
+                <!-- Date range selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Тиждень
+                        Період
                     </label>
-                    <select 
-                        x-model="selectedWeek" 
-                        @change="onWeekChange()"
-                        :disabled="!selectedGroup || loadingWeeks"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="">Оберіть тиждень</option>
-                        <template x-for="week in weeks" :key="week.number">
-                            <option :value="week.number" x-text="week.label"></option>
-                        </template>
-                    </select>
-                    <div x-show="loadingWeeks" class="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                        Завантаження тижнів...
+                    <div class="flex space-x-2">
+                        <input 
+                            type="date" 
+                            x-model="startDate" 
+                            @change="onDateRangeChange()"
+                            :disabled="!selectedGroup || loadingSchedule"
+                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="flex items-center text-gray-500 dark:text-gray-400">-</span>
+                        <input 
+                            type="date" 
+                            x-model="endDate" 
+                            @change="onDateRangeChange()"
+                            :disabled="!selectedGroup || loadingSchedule"
+                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                    </div>
+                    <div x-show="dateRangeError" class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="dateRangeError"></div>
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Мінімум 1 день, максимум 2 тижні
                     </div>
                 </div>
             </div>
@@ -113,9 +119,9 @@
                 <p>Оберіть курс та групу для перегляду розкладу</p>
             </div>
             
-            <div x-show="selectedGroup && !selectedWeek && !loadingSchedule" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div x-show="selectedGroup && (!startDate || !endDate) && !loadingSchedule" class="p-8 text-center text-gray-500 dark:text-gray-400">
                 <div class="text-lg mb-2">📅</div>
-                <p>Оберіть тиждень для перегляду розкладу</p>
+                <p>Оберіть період для перегляду розкладу</p>
             </div>
         </div>
     </div>
@@ -126,13 +132,14 @@ function scheduleApp() {
     return {
         selectedCourse: '',
         selectedGroup: '',
-        selectedWeek: '',
+        startDate: '',
+        endDate: '',
         groups: [],
-        weeks: [],
         scheduleData: null,
+        dateRange: [],
         loadingGroups: false,
-        loadingWeeks: false,
         loadingSchedule: false,
+        dateRangeError: '',
         daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
         timeSlots: {
             '08:00-09:30': '08:00-09:30',
@@ -145,8 +152,20 @@ function scheduleApp() {
         },
         subjectTypes: {},
 
-        init() {
-            // Initialization
+        async init() {
+            // Load current week as default
+            await this.loadCurrentWeek();
+        },
+
+        async loadCurrentWeek() {
+            try {
+                const response = await fetch('/api/current-week');
+                const data = await response.json();
+                this.startDate = data.start_date;
+                this.endDate = data.end_date;
+            } catch (error) {
+                console.error('Error loading current week:', error);
+            }
         },
 
         async onCourseChange() {
@@ -172,44 +191,75 @@ function scheduleApp() {
 
         async onGroupChange() {
             this.scheduleData = null;
-            this.selectedWeek = '';
             
-            if (this.selectedGroup) {
-                await this.loadWeeks();
-            }
-        },
-
-        async onWeekChange() {
-            if (this.selectedGroup && this.selectedWeek) {
+            if (this.selectedGroup && this.startDate && this.endDate) {
                 await this.loadSchedule();
             }
         },
 
-        async loadWeeks() {
-            this.loadingWeeks = true;
-            try {
-                const response = await fetch('/api/weeks');
-                this.weeks = await response.json();
-            } catch (error) {
-                console.error('Error loading weeks:', error);
-                this.weeks = [];
-            } finally {
-                this.loadingWeeks = false;
+        async onDateRangeChange() {
+            this.dateRangeError = '';
+            
+            if (!this.startDate || !this.endDate) {
+                this.scheduleData = null;
+                return;
+            }
+
+            // Validate date range
+            const start = new Date(this.startDate);
+            const end = new Date(this.endDate);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 14) {
+                this.dateRangeError = 'Діапазон дат не може перевищувати 2 тижні (14 днів)';
+                this.scheduleData = null;
+                return;
+            }
+
+            if (start > end) {
+                this.dateRangeError = 'Дата початку не може бути пізніше дати закінчення';
+                this.scheduleData = null;
+                return;
+            }
+
+            if (this.selectedGroup) {
+                await this.loadSchedule();
             }
         },
 
         async loadSchedule() {
-            if (!this.selectedGroup || !this.selectedWeek) return;
+            if (!this.selectedGroup || !this.startDate || !this.endDate) {
+                console.log('loadSchedule: Missing required data', {
+                    selectedGroup: this.selectedGroup,
+                    startDate: this.startDate,
+                    endDate: this.endDate
+                });
+                return;
+            }
 
             this.loadingSchedule = true;
+            console.log('loadSchedule: Starting to load schedule...');
+            
             try {
-                const url = `/api/groups/${this.selectedGroup}/schedule/${this.selectedWeek}`;
+                const url = `/api/groups/${this.selectedGroup}/schedule/${this.startDate}/${this.endDate}`;
+                console.log('loadSchedule: Fetching URL:', url);
+                
                 const response = await fetch(url);
+                console.log('loadSchedule: Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
+                console.log('loadSchedule: Received data:', data);
                 
                 this.scheduleData = data.schedule;
-                // Don't overwrite daysOfWeek and timeSlots, they are already initialized
+                this.dateRange = data.date_range;
                 this.subjectTypes = data.subject_types;
+                
+                console.log('loadSchedule: Schedule data set:', this.scheduleData);
             } catch (error) {
                 console.error('Error loading schedule:', error);
                 this.scheduleData = null;
@@ -231,8 +281,8 @@ function scheduleApp() {
             return dayNames[day] || day;
         },
 
-        getScheduleItem(day, timeSlot) {
-            return this.scheduleData?.[day]?.[timeSlot] || null;
+        getScheduleItem(date, timeSlot) {
+            return this.scheduleData?.[date]?.[timeSlot] || null;
         },
 
         getSubjectColor(subjectType) {

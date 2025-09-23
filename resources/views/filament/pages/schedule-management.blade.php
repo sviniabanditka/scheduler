@@ -170,22 +170,29 @@
                     </div>
                 </div>
 
-                <!-- Week selection -->
+                <!-- Date range selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Тиждень
+                        Період
                     </label>
-                    <select x-model="selectedWeek" 
-                            @change="onWeekChange()"
-                            :disabled="!selectedGroup || loadingWeeks"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="">Оберіть тиждень</option>
-                        <template x-for="week in weeks" :key="week.number">
-                            <option :value="week.number" x-text="week.label"></option>
-                        </template>
-                    </select>
-                    <div x-show="loadingWeeks" class="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                        Завантаження тижнів...
+                    <div class="flex space-x-2">
+                        <input 
+                            type="date" 
+                            x-model="startDate" 
+                            @change="onDateRangeChange()"
+                            :disabled="!selectedGroup || loadingSchedule"
+                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="flex items-center text-gray-500 dark:text-gray-400">-</span>
+                        <input 
+                            type="date" 
+                            x-model="endDate" 
+                            @change="onDateRangeChange()"
+                            :disabled="!selectedGroup || loadingSchedule"
+                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                    </div>
+                    <div x-show="dateRangeError" class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="dateRangeError"></div>
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Мінімум 1 день, максимум 2 тижні
                     </div>
                 </div>
             </div>
@@ -220,9 +227,10 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
                                         Час
                                     </th>
-                                    <template x-for="day in daysOfWeek" :key="day">
+                                    <template x-for="dateInfo in dateRange" :key="dateInfo.date">
                                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 last:border-r-0">
-                                            <span x-text="getDayName(day)"></span>
+                                            <div x-text="dateInfo.day_name"></div>
+                                            <div class="text-xs font-normal" x-text="dateInfo.formatted"></div>
                                         </th>
                                     </template>
                                 </tr>
@@ -231,26 +239,26 @@
                                 <template x-for="timeSlot in timeSlots" :key="timeSlot">
                                     <tr>
                                         <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white" x-text="timeSlot"></td>
-                                        <template x-for="day in daysOfWeek" :key="day">
+                                        <template x-for="dateInfo in dateRange" :key="dateInfo.date">
                                             <td class="px-2 py-3 text-center">
-                                                <div x-show="getScheduleItem(day, timeSlot)" 
+                                                <div x-show="getScheduleItem(dateInfo.date, timeSlot)" 
                                                      x-transition:enter="transition ease-out duration-200"
                                                      x-transition:enter-start="opacity-0 scale-95"
                                                      x-transition:enter-end="opacity-100 scale-100"
                                                      class="p-2 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                                                     :class="getSubjectClass(getScheduleItem(day, timeSlot)?.subject_type)"
-                                                     :title="'Викладач: ' + getScheduleItem(day, timeSlot)?.teacher + (getScheduleItem(day, timeSlot)?.classroom ? '\\nАудиторія: ' + getScheduleItem(day, timeSlot)?.classroom : '')"
-                                                     @click="openEditModal(getScheduleItem(day, timeSlot)?.id, getScheduleItem(day, timeSlot)?.subject, getScheduleItem(day, timeSlot)?.teacher, getScheduleItem(day, timeSlot)?.classroom || '', day, timeSlot, getScheduleItem(day, timeSlot)?.week_number)">
-                                                    <div class="font-medium truncate" x-text="getScheduleItem(day, timeSlot)?.subject"></div>
-                                                    <div class="truncate" x-text="getScheduleItem(day, timeSlot)?.teacher"></div>
-                                                    <div x-show="getScheduleItem(day, timeSlot)?.classroom" 
+                                                     :class="getSubjectClass(getScheduleItem(dateInfo.date, timeSlot)?.subject_type)"
+                                                     :title="'Викладач: ' + getScheduleItem(dateInfo.date, timeSlot)?.teacher + (getScheduleItem(dateInfo.date, timeSlot)?.classroom ? '\\nАудиторія: ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom : '')"
+                                                     @click="openEditModal(getScheduleItem(dateInfo.date, timeSlot)?.id, getScheduleItem(dateInfo.date, timeSlot)?.subject, getScheduleItem(dateInfo.date, timeSlot)?.teacher, getScheduleItem(dateInfo.date, timeSlot)?.classroom || '', dateInfo.date, timeSlot, getScheduleItem(dateInfo.date, timeSlot)?.week_number, dateInfo.date)">
+                                                    <div class="font-medium truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.subject"></div>
+                                                    <div class="truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.teacher"></div>
+                                                    <div x-show="getScheduleItem(dateInfo.date, timeSlot)?.classroom" 
                                                          class="truncate" 
-                                                         x-text="'Ауд. ' + getScheduleItem(day, timeSlot)?.classroom"></div>
+                                                         x-text="'Ауд. ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom"></div>
                                                     <div class="text-xs opacity-50 mt-1">Клік для редагування</div>
                                                 </div>
-                                                <div x-show="!getScheduleItem(day, timeSlot)" 
+                                                <div x-show="!getScheduleItem(dateInfo.date, timeSlot)" 
                                                      class="p-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 text-center cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"
-                                                     @click="openAddModal(day, timeSlot)">
+                                                     @click="openAddModal(dateInfo.date, timeSlot)">
                                                     <div class="text-xs">+ Додати заняття</div>
                                                 </div>
                                             </td>
@@ -268,9 +276,9 @@
                 <p>Оберіть курс та групу для управління розкладом</p>
             </div>
             
-            <div x-show="selectedGroup && !selectedWeek && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
+            <div x-show="selectedGroup && (!startDate || !endDate) && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
                 <div class="text-lg mb-2">📅</div>
-                <p>Оберіть тиждень для управління розкладом</p>
+                <p>Оберіть період для управління розкладом</p>
             </div>
         </div>
 
@@ -341,53 +349,17 @@
                                                placeholder="Наприклад: 101">
                                     </div>
 
-                                    <!-- День недели (только для добавления) -->
-                                    <div x-show="!isEditing">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            День тижня
-                                        </label>
-                                        <select x-model="formData.day_of_week"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                required>
-                                            <option value="">Оберіть день</option>
-                                            <option value="1">Понеділок</option>
-                                            <option value="2">Вівторок</option>
-                                            <option value="3">Середа</option>
-                                            <option value="4">Четвер</option>
-                                            <option value="5">П'ятниця</option>
-                                            <option value="6">Субота</option>
-                                            <option value="7">Неділя</option>
-                                        </select>
-                                    </div>
 
-                                    <!-- Время (только для добавления) -->
-                                    <div x-show="!isEditing">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Час
-                                        </label>
-                                        <select x-model="formData.time_slot"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                required>
-                                            <option value="">Оберіть час</option>
-                                            <template x-for="(label, value) in timeSlots" :key="value">
-                                                <option :value="value" x-text="label"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-
-                                    <!-- Неделя -->
+                                    <!-- Дата -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Тиждень
+                                            Дата
                                         </label>
-                                        <select x-model="formData.week_number"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                required>
-                                            <option value="">Оберіть тиждень</option>
-                                            <template x-for="week in weeks" :key="week.number">
-                                                <option :value="week.number" x-text="week.label"></option>
-                                            </template>
-                                        </select>
+                                        <input type="date" 
+                                               x-model="formData.date" 
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Дата занятия"
+                                               required>
                                     </div>
                                 </div>
                             </div>
@@ -425,16 +397,18 @@
         return {
             selectedCourse: '',
             selectedGroup: '',
-            selectedWeek: '',
+            startDate: '',
+            endDate: '',
             courses: [],
             groups: [],
             weeks: [],
             subjects: [],
             teachers: [],
             scheduleData: null,
+            dateRange: [],
             loadingGroups: false,
-            loadingWeeks: false,
             loadingSchedule: false,
+            dateRangeError: '',
             daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
             timeSlots: {
                 '08:00-09:30': '08:00-09:30',
@@ -458,14 +432,27 @@
                 classroom: '',
                 day_of_week: '',
                 time_slot: '',
-                week_number: ''
+                week_number: '',
+                date: ''
             },
 
             async init() {
                 await this.loadCourses();
+                await this.loadCurrentWeek();
                 await this.loadWeeks();
                 await this.loadSubjects();
                 await this.loadTeachers();
+            },
+
+            async loadCurrentWeek() {
+                try {
+                    const response = await fetch('/api/current-week');
+                    const data = await response.json();
+                    this.startDate = data.start_date;
+                    this.endDate = data.end_date;
+                } catch (error) {
+                    console.error('Error loading current week:', error);
+                }
             },
 
             async loadCourses() {
@@ -501,25 +488,50 @@
 
             async onGroupChange() {
                 this.scheduleData = null;
-                this.selectedWeek = '';
+                
+                if (this.selectedGroup && this.startDate && this.endDate) {
+                    await this.loadSchedule();
+                }
             },
 
-            async onWeekChange() {
-                if (this.selectedGroup && this.selectedWeek) {
+            async onDateRangeChange() {
+                this.dateRangeError = '';
+                
+                if (!this.startDate || !this.endDate) {
+                    this.scheduleData = null;
+                    return;
+                }
+
+                // Validate date range
+                const start = new Date(this.startDate);
+                const end = new Date(this.endDate);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 14) {
+                    this.dateRangeError = 'Діапазон дат не може перевищувати 2 тижні (14 днів)';
+                    this.scheduleData = null;
+                    return;
+                }
+
+                if (start > end) {
+                    this.dateRangeError = 'Дата початку не може бути пізніше дати закінчення';
+                    this.scheduleData = null;
+                    return;
+                }
+
+                if (this.selectedGroup) {
                     await this.loadSchedule();
                 }
             },
 
             async loadWeeks() {
-                this.loadingWeeks = true;
                 try {
                     const response = await fetch('/api/weeks');
                     this.weeks = await response.json();
                 } catch (error) {
                     console.error('Ошибка загрузки недель:', error);
                     this.weeks = [];
-                } finally {
-                    this.loadingWeeks = false;
                 }
             },
 
@@ -544,13 +556,13 @@
             },
 
             async loadSchedule(forceRefresh = false) {
-                if (!this.selectedGroup || !this.selectedWeek) return;
+                if (!this.selectedGroup || !this.startDate || !this.endDate) return;
 
                 this.loadingSchedule = true;
                 try {
                     // Добавляем timestamp для предотвращения кэширования
                     const timestamp = forceRefresh ? `?t=${Date.now()}` : '';
-                    const url = `/api/groups/${this.selectedGroup}/schedule/${this.selectedWeek}${timestamp}`;
+                    const url = `/api/groups/${this.selectedGroup}/schedule/${this.startDate}/${this.endDate}${timestamp}`;
                     const response = await fetch(url);
                     const data = await response.json();
                     
@@ -561,6 +573,7 @@
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
                     this.scheduleData = data.schedule;
+                    this.dateRange = data.date_range;
                     // Не перезаписываем daysOfWeek и timeSlots, они уже инициализированы
                     this.subjectTypes = data.subject_types;
                 } catch (error) {
@@ -584,8 +597,8 @@
                 return dayNames[day] || day;
             },
 
-            getScheduleItem(day, timeSlot) {
-                return this.scheduleData?.[day]?.[timeSlot] || null;
+            getScheduleItem(date, timeSlot) {
+                return this.scheduleData?.[date]?.[timeSlot] || null;
             },
 
             getSubjectClass(subjectType) {
@@ -598,32 +611,39 @@
                 }
             },
 
-            openEditModal(id, subject, teacher, classroom, day, time, week) {
+            openEditModal(id, subject, teacher, classroom, date, time, week, scheduleDate) {
                 this.isEditing = true;
                 this.formData = {
                     id: id,
                     subject_id: this.subjects.find(s => s.name === subject)?.id || '',
                     teacher_id: this.teachers.find(t => t.name === teacher)?.id || '',
                     classroom: classroom || '',
-                    day_of_week: day,
+                    day_of_week: this.getDayOfWeekFromDate(date),
                     time_slot: time,
-                    week_number: week || this.selectedWeek
+                    week_number: week || '',
+                    date: date
                 };
                 this.showModal = true;
             },
 
-            openAddModal(day, time) {
+            openAddModal(date, time) {
                 this.isEditing = false;
                 this.formData = {
                     id: null,
                     subject_id: '',
                     teacher_id: '',
                     classroom: '',
-                    day_of_week: day,
+                    day_of_week: this.getDayOfWeekFromDate(date),
                     time_slot: time,
-                    week_number: this.selectedWeek
+                    week_number: '',
+                    date: date
                 };
                 this.showModal = true;
+            },
+
+            getDayOfWeekFromDate(dateString) {
+                const date = new Date(dateString);
+                return date.getDay() === 0 ? 7 : date.getDay(); // Convert Sunday (0) to 7
             },
 
             closeModal() {
@@ -635,7 +655,8 @@
                     classroom: '',
                     day_of_week: '',
                     time_slot: '',
-                    week_number: ''
+                    week_number: '',
+                    date: ''
                 };
             },
 

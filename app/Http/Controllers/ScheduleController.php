@@ -34,49 +34,101 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Get schedule for group and week
+     * Get schedule for group and date range
      */
-    public function getSchedule(int $groupId, int $week): JsonResponse
+    public function getSchedule(int $groupId, string $startDate, string $endDate): JsonResponse
     {
         $schedules = Schedule::with(['subject', 'teacher', 'group.course'])
             ->where('group_id', $groupId)
-            ->where('week_number', $week)
+            ->whereNotNull('date')
+            ->whereBetween('date', [$startDate, $endDate])
             ->get();
 
-        // Create schedule matrix (day × time)
+        // Create schedule matrix (date × time)
         $scheduleMatrix = [];
         $timeSlots = array_keys(Schedule::TIME_SLOTS);
-        $daysOfWeek = array_keys(Schedule::DAYS_OF_WEEK);
+        
+        // Generate date range
+        $startDateObj = \Carbon\Carbon::parse($startDate);
+        $endDateObj = \Carbon\Carbon::parse($endDate);
+        $dateRange = [];
+        
+        for ($date = $startDateObj->copy(); $date->lte($endDateObj); $date->addDay()) {
+            $dateRange[] = $date->format('Y-m-d');
+        }
 
         // Initialize empty matrix
-        foreach ($daysOfWeek as $day) {
+        foreach ($dateRange as $date) {
             foreach ($timeSlots as $time) {
-                $scheduleMatrix[$day][$time] = null;
+                $scheduleMatrix[$date][$time] = null;
             }
         }
 
         // Fill matrix with data from database
         foreach ($schedules as $schedule) {
-            $scheduleMatrix[$schedule->day_of_week][$schedule->time_slot] = [
-                'id' => $schedule->id,
-                'subject' => $schedule->subject->name,
-                'subject_type' => $schedule->subject->type,
-                'teacher' => $schedule->teacher->name,
-                'classroom' => $schedule->classroom,
-                'week_number' => $schedule->week_number,
+            $scheduleDate = $schedule->date->format('Y-m-d');
+            if (isset($scheduleMatrix[$scheduleDate])) {
+                $scheduleMatrix[$scheduleDate][$schedule->time_slot] = [
+                    'id' => $schedule->id,
+                    'subject' => $schedule->subject->name,
+                    'subject_type' => $schedule->subject->type,
+                    'teacher' => $schedule->teacher->name,
+                    'classroom' => $schedule->classroom,
+                    'week_number' => $schedule->week_number,
+                    'date' => $schedule->date,
+                    'formatted_date' => $schedule->date->format('d.m.Y'),
+                ];
+            }
+        }
+
+        // Format date range for frontend
+        $formattedDateRange = [];
+        foreach ($dateRange as $date) {
+            $dateObj = \Carbon\Carbon::parse($date);
+            $dayOfWeek = $dateObj->dayOfWeek === 0 ? 7 : $dateObj->dayOfWeek; // Convert Sunday (0) to 7
+            $formattedDateRange[] = [
+                'date' => $date,
+                'formatted' => $dateObj->format('d.m.Y'),
+                'day_name' => Schedule::DAYS_OF_WEEK[$dayOfWeek] ?? 'Невідомо',
+                'day_of_week' => $dayOfWeek,
             ];
         }
 
         return response()->json([
             'schedule' => $scheduleMatrix,
             'time_slots' => Schedule::TIME_SLOTS,
-            'days_of_week' => Schedule::DAYS_OF_WEEK,
+            'date_range' => $formattedDateRange,
             'subject_types' => \App\Models\Subject::TYPES,
         ]);
     }
 
     /**
-     * Get list of weeks with dates
+     * Get current week date range
+     */
+    public function getCurrentWeekRange(): JsonResponse
+    {
+        $today = new \DateTime();
+        $dayOfWeek = $today->format('N'); // 1 = Monday, 7 = Sunday
+        
+        // Calculate start of week (Monday)
+        $startOfWeek = clone $today;
+        $startOfWeek->modify('-' . ($dayOfWeek - 1) . ' days');
+        
+        // Calculate end of week (Sunday)
+        $endOfWeek = clone $startOfWeek;
+        $endOfWeek->modify('+6 days');
+        
+        return response()->json([
+            'start_date' => $startOfWeek->format('Y-m-d'),
+            'end_date' => $endOfWeek->format('Y-m-d'),
+            'start_date_formatted' => $startOfWeek->format('d.m.Y'),
+            'end_date_formatted' => $endOfWeek->format('d.m.Y'),
+            'label' => "Поточна тиждень ({$startOfWeek->format('d.m')} - {$endOfWeek->format('d.m.Y')})"
+        ]);
+    }
+
+    /**
+     * Get list of weeks with dates (kept for backward compatibility)
      */
     public function getWeeks(): JsonResponse
     {
@@ -95,8 +147,10 @@ class ScheduleController extends Controller
             
             $weeks[] = [
                 'number' => $week,
-                'start_date' => $startDate->format('d.m.Y'),
-                'end_date' => $endDate->format('d.m.Y'),
+                'start_date' => $startDate->format('Y-m-d'),
+                'end_date' => $endDate->format('Y-m-d'),
+                'start_date_formatted' => $startDate->format('d.m.Y'),
+                'end_date_formatted' => $endDate->format('d.m.Y'),
                 'label' => "Тиждень {$week} ({$startDate->format('d.m')} - {$endDate->format('d.m.Y')})"
             ];
             
@@ -143,16 +197,20 @@ class ScheduleController extends Controller
                 'group_id' => 'required|exists:groups,id',
                 'subject_id' => 'required|exists:subjects,id',
                 'teacher_id' => 'required|exists:teachers,id',
-                'day_of_week' => 'required|integer|min:1|max:7',
                 'time_slot' => 'required|string',
                 'week_number' => 'nullable|integer|min:1|max:52',
+                'date' => 'required|date',
                 'classroom' => 'nullable|string|max:50',
             ]);
 
             // Check for conflicts
             $this->validateScheduleConflicts($request->all());
 
-            $schedule = Schedule::create($request->all());
+            $data = $request->all();
+            $date = \Carbon\Carbon::parse($data['date']);
+            $data['day_of_week'] = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek; // Convert Sunday (0) to 7
+            
+            $schedule = Schedule::create($data);
             $schedule->load(['subject', 'teacher', 'group']);
 
             return response()->json([
@@ -180,16 +238,20 @@ class ScheduleController extends Controller
                 'group_id' => 'required|exists:groups,id',
                 'subject_id' => 'required|exists:subjects,id',
                 'teacher_id' => 'required|exists:teachers,id',
-                'day_of_week' => 'required|integer|min:1|max:7',
                 'time_slot' => 'required|string',
                 'week_number' => 'nullable|integer|min:1|max:52',
+                'date' => 'required|date',
                 'classroom' => 'nullable|string|max:50',
             ]);
 
             // Check for conflicts (excluding current lesson)
             $this->validateScheduleConflicts($request->all(), $id);
 
-            $schedule->update($request->all());
+            $data = $request->all();
+            $date = \Carbon\Carbon::parse($data['date']);
+            $data['day_of_week'] = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek; // Convert Sunday (0) to 7
+            
+            $schedule->update($data);
             $schedule->load(['subject', 'teacher', 'group']);
 
             return response()->json([
@@ -224,10 +286,15 @@ class ScheduleController extends Controller
      */
     private function validateScheduleConflicts(array $data, ?int $excludeId = null): void
     {
+        // Calculate day_of_week from date
+        $date = \Carbon\Carbon::parse($data['date']);
+        $dayOfWeek = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek; // Convert Sunday (0) to 7
+        
         // Check group conflict
         $groupQuery = Schedule::where('group_id', $data['group_id'])
-            ->where('day_of_week', $data['day_of_week'])
-            ->where('time_slot', $data['time_slot']);
+            ->where('day_of_week', $dayOfWeek)
+            ->where('time_slot', $data['time_slot'])
+            ->where('date', $data['date']);
 
         if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
             $groupQuery->where('week_number', $data['week_number']);
@@ -245,8 +312,9 @@ class ScheduleController extends Controller
 
         // Check teacher conflict
         $teacherQuery = Schedule::where('teacher_id', $data['teacher_id'])
-            ->where('day_of_week', $data['day_of_week'])
-            ->where('time_slot', $data['time_slot']);
+            ->where('day_of_week', $dayOfWeek)
+            ->where('time_slot', $data['time_slot'])
+            ->where('date', $data['date']);
 
         if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
             $teacherQuery->where('week_number', $data['week_number']);

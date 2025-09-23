@@ -8,8 +8,9 @@ Route::get('/', [ScheduleController::class, 'index'])->name('home');
 
 // API маршруты для расписания
 Route::get('/api/courses/{courseId}/groups', [ScheduleController::class, 'getCourseGroups'])->name('api.course.groups');
-Route::get('/api/groups/{groupId}/schedule/{week}', [ScheduleController::class, 'getSchedule'])->name('api.group.schedule');
+Route::get('/api/groups/{groupId}/schedule/{startDate}/{endDate}', [ScheduleController::class, 'getSchedule'])->name('api.group.schedule');
 Route::get('/api/weeks', [ScheduleController::class, 'getWeeks'])->name('api.weeks');
+Route::get('/api/current-week', [ScheduleController::class, 'getCurrentWeekRange'])->name('api.current.week');
 
 // API маршруты для админки
 Route::get('/api/courses', [ScheduleController::class, 'getCourses'])->name('api.courses');

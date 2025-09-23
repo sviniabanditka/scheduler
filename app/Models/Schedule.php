@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,12 @@ class Schedule extends Model
         'day_of_week',
         'time_slot',
         'week_number',
+        'date',
         'classroom',
+    ];
+
+    protected $casts = [
+        'date' => 'date',
     ];
 
     // Constants for days of the week
@@ -94,7 +100,28 @@ class Schedule extends Model
             'day_of_week' => 'required|integer|min:1|max:7',
             'time_slot' => 'required|string|max:20',
             'week_number' => 'nullable|integer|min:1|max:52',
+            'date' => 'required|date',
             'classroom' => 'nullable|string|max:50',
         ];
+    }
+
+    /**
+     * Get the formatted date for this schedule.
+     */
+    public function getFormattedDateAttribute(): string
+    {
+        /** @var Carbon $date */
+        $date = $this->date;
+        return $date->format('d.m.Y');
+    }
+
+    /**
+     * Check if the schedule is active for a given date.
+     */
+    public function isActiveForDate(\DateTime $date): bool
+    {
+        /** @var Carbon $scheduleDate */
+        $scheduleDate = $this->date;
+        return $scheduleDate->format('Y-m-d') === $date->format('Y-m-d');
     }
 }
