@@ -62,7 +62,7 @@ class ScheduleController extends Controller
         $assignments = ScheduleAssignment::where('schedule_version_id', $publishedVersion->id)
             ->whereHas('activity', function ($query) use ($groupId) {
                 $query->whereHas('groups', function ($q) use ($groupId) {
-                    $q->where('group_id', $groupId);
+                    $q->where('groups.id', $groupId);
                 });
             })
             ->with(['activity.subject', 'activity.teachers', 'room'])

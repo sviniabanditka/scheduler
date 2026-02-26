@@ -164,7 +164,7 @@ func (db *PostgresDB) getTimeSlots(ctx context.Context, tenantID string, calenda
 
 func (db *PostgresDB) getRooms(ctx context.Context, tenantID string) ([]types.Room, error) {
 	query := `
-		SELECT id, code, title, capacity, room_type, COALESCE(features, '{}'), active
+		SELECT id, code, title, capacity, room_type, '[]'::jsonb, active
 		FROM rooms
 		WHERE tenant_id = $1 AND active = true
 		ORDER BY code
@@ -190,10 +190,10 @@ func (db *PostgresDB) getRooms(ctx context.Context, tenantID string) ([]types.Ro
 
 func (db *PostgresDB) getGroups(ctx context.Context, tenantID string) ([]types.Group, error) {
 	query := `
-		SELECT id, code, title, size, active
+		SELECT id, COALESCE(code, name), name, COALESCE(size, 0), COALESCE(active, true)
 		FROM groups
-		WHERE tenant_id = $1 AND active = true
-		ORDER BY code
+		WHERE tenant_id = $1 AND COALESCE(active, true) = true
+		ORDER BY name
 	`
 
 	rows, err := db.pool.Query(ctx, query, tenantID)
@@ -216,7 +216,7 @@ func (db *PostgresDB) getGroups(ctx context.Context, tenantID string) ([]types.G
 
 func (db *PostgresDB) getTeachers(ctx context.Context, tenantID string) ([]types.Teacher, error) {
 	query := `
-		SELECT id, name, email, COALESCE(full_name, name)
+		SELECT id, name, email, name
 		FROM teachers
 		WHERE tenant_id = $1
 		ORDER BY name

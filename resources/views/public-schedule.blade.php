@@ -12,6 +12,12 @@
                 <p class="text-xl text-gray-600 dark:text-gray-300">
                     Розклад занять
                 </p>
+                @if($calendar)
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {{ $calendar->name }} ({{ $calendar->start_date->format('d.m.Y') }} —
+                        {{ $calendar->end_date->format('d.m.Y') }})
+                    </p>
+                @endif
             </div>
         </div>
 
@@ -58,10 +64,16 @@
                         </label>
                         <div class="flex space-x-2">
                             <input type="date" x-model="startDate" @change="onDateRangeChange()" :disabled="!selectedGroup"
+                                :min="calendarMinDate" :max="calendarMaxDate"
                                 class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:opacity-50 transition-all">
                             <span class="flex items-center text-gray-400">—</span>
                             <input type="date" x-model="endDate" @change="onDateRangeChange()" :disabled="!selectedGroup"
+                                :min="calendarMinDate" :max="calendarMaxDate"
                                 class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:opacity-50 transition-all">
+                        </div>
+                        <div x-show="calendarMinDate" class="mt-1 text-xs text-gray-400">
+                            Доступний період: <span x-text="formatDisplayDate(calendarMinDate)"></span> — <span
+                                x-text="formatDisplayDate(calendarMaxDate)"></span>
                         </div>
                     </div>
                 </div>
@@ -182,6 +194,8 @@
                 selectedGroup: '',
                 startDate: '',
                 endDate: '',
+                calendarMinDate: '{{ $calendar?->start_date?->format("Y-m-d") ?? "" }}',
+                calendarMaxDate: '{{ $calendar?->end_date?->format("Y-m-d") ?? "" }}',
                 groups: [],
                 scheduleData: null,
                 dateRange: [],
@@ -200,12 +214,39 @@
                     const sunday = new Date(monday);
                     sunday.setDate(monday.getDate() + 6);
 
-                    this.startDate = this.formatDateISO(monday);
-                    this.endDate = this.formatDateISO(sunday);
+                    let start = monday;
+                    let end = sunday;
+
+                    // Clamp to calendar range if available
+                    if (this.calendarMinDate && this.calendarMaxDate) {
+                        const calStart = new Date(this.calendarMinDate);
+                        const calEnd = new Date(this.calendarMaxDate);
+
+                        // If today is outside calendar, snap to first week of calendar
+                        if (today > calEnd || today < calStart) {
+                            const calDayOfWeek = calStart.getDay() === 0 ? 7 : calStart.getDay();
+                            start = new Date(calStart);
+                            start.setDate(calStart.getDate() - (calDayOfWeek - 1));
+                            end = new Date(start);
+                            end.setDate(start.getDate() + 6);
+
+                            if (start < calStart) start = calStart;
+                            if (end > calEnd) end = calEnd;
+                        }
+                    }
+
+                    this.startDate = this.formatDateISO(start);
+                    this.endDate = this.formatDateISO(end);
                 },
 
                 formatDateISO(date) {
                     return date.toISOString().split('T')[0];
+                },
+
+                formatDisplayDate(dateStr) {
+                    if (!dateStr) return '';
+                    const parts = dateStr.split('-');
+                    return `${parts[2]}.${parts[1]}.${parts[0]}`;
                 },
 
                 async onCourseChange() {
@@ -265,6 +306,11 @@
                             this.dateRange = data.date_range;
                             this.timeSlots = data.time_slots;
                             this.versionInfo = data.version;
+                        }
+
+                        if (data.calendar_range) {
+                            this.calendarMinDate = data.calendar_range.start;
+                            this.calendarMaxDate = data.calendar_range.end;
                         }
                     } catch (error) {
                         console.error('Error loading schedule:', error);

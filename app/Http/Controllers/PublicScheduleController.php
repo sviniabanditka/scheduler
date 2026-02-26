@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Calendar;
 use App\Models\Course;
 use App\Models\Group;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleVersion;
 use App\Models\Tenant;
 use App\Models\TimeSlot;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
 class PublicScheduleController extends Controller
@@ -26,10 +28,24 @@ class PublicScheduleController extends Controller
             ->orderBy('number')
             ->get();
 
+        // Get published version's calendar for date limits
+        $publishedVersion = ScheduleVersion::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('status', 'published')
+            ->latest('published_at')
+            ->first();
+
+        $calendar = null;
+        if ($publishedVersion) {
+            $calendar = Calendar::withoutGlobalScopes()
+                ->find($publishedVersion->calendar_id);
+        }
+
         return view('public-schedule', [
             'tenant' => $tenant,
             'courses' => $courses,
             'slug' => $slug,
+            'calendar' => $calendar,
         ]);
     }
 
@@ -73,12 +89,49 @@ class PublicScheduleController extends Controller
             ]);
         }
 
+        // Get calendar for date range validation
+        $calendar = Calendar::withoutGlobalScopes()
+            ->find($publishedVersion->calendar_id);
+
+        if (!$calendar) {
+            return response()->json([
+                'schedule' => [],
+                'time_slots' => [],
+                'date_range' => [],
+                'message' => 'Календар не знайдено',
+            ]);
+        }
+
+        // Parse and clamp dates to calendar range
+        $requestStart = Carbon::parse($startDate);
+        $requestEnd = Carbon::parse($endDate);
+        $calendarStart = $calendar->start_date;
+        $calendarEnd = $calendar->end_date;
+
+        // If the entire requested range is outside the calendar, return empty
+        if ($requestStart->gt($calendarEnd) || $requestEnd->lt($calendarStart)) {
+            return response()->json([
+                'schedule' => [],
+                'time_slots' => [],
+                'date_range' => [],
+                'message' => "Обраний період за межами календаря ({$calendarStart->format('d.m.Y')} — {$calendarEnd->format('d.m.Y')})",
+                'calendar_range' => [
+                    'start' => $calendarStart->format('Y-m-d'),
+                    'end' => $calendarEnd->format('Y-m-d'),
+                ],
+            ]);
+        }
+
+        // Clamp to calendar bounds
+        $effectiveStart = $requestStart->lt($calendarStart) ? $calendarStart->copy() : $requestStart;
+        $effectiveEnd = $requestEnd->gt($calendarEnd) ? $calendarEnd->copy() : $requestEnd;
+
         $assignments = ScheduleAssignment::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('schedule_version_id', $publishedVersion->id)
             ->whereHas('activity', function ($query) use ($groupId) {
                 $query->whereHas('groups', function ($q) use ($groupId) {
-                    $q->where('group_id', $groupId);
+                    $q->where('groups.id', $groupId);
                 });
             })
             ->with(['activity.subject', 'activity.teachers', 'room'])
@@ -93,8 +146,6 @@ class PublicScheduleController extends Controller
 
         // Build schedule matrix
         $scheduleMatrix = [];
-        $startDateObj = \Carbon\Carbon::parse($startDate);
-        $endDateObj = \Carbon\Carbon::parse($endDate);
         $dateRange = [];
 
         $dayNames = [
@@ -102,7 +153,7 @@ class PublicScheduleController extends Controller
             4 => 'Четвер', 5 => "П'ятниця", 6 => 'Субота', 7 => 'Неділя',
         ];
 
-        for ($date = $startDateObj->copy(); $date->lte($endDateObj); $date->addDay()) {
+        for ($date = $effectiveStart->copy(); $date->lte($effectiveEnd); $date->addDay()) {
             $dayOfWeek = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek;
             $dateStr = $date->format('Y-m-d');
 
@@ -147,6 +198,10 @@ class PublicScheduleController extends Controller
             'version' => [
                 'name' => $publishedVersion->name,
                 'published_at' => $publishedVersion->published_at?->format('d.m.Y H:i'),
+            ],
+            'calendar_range' => [
+                'start' => $calendarStart->format('Y-m-d'),
+                'end' => $calendarEnd->format('Y-m-d'),
             ],
         ]);
     }

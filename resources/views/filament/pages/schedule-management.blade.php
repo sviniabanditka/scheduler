@@ -1,814 +1,267 @@
 <x-filament-panels::page>
-        <style>
-            /* Принудительно перезаписываем стили Filament */
-            .schedule-item-lecture {
-                background: linear-gradient(to right, #dbeafe, #bfdbfe) !important;
-                color: #1e40af !important;
-                border-left: 4px solid #3b82f6 !important;
-            }
+    <style>
+        .schedule-cell { min-width: 160px; min-height: 60px; }
+        .schedule-item { transition: all 0.2s; }
+        .schedule-item:hover { transform: scale(1.02); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .type-lecture { background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-left: 4px solid #3b82f6; color: #1e40af; }
+        .type-practice { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-left: 4px solid #22c55e; color: #166534; }
+        .type-lab { background: linear-gradient(135deg, #fef3c7, #fde68a); border-left: 4px solid #f59e0b; color: #92400e; }
+        .type-seminar { background: linear-gradient(135deg, #fee2e2, #fecaca); border-left: 4px solid #ef4444; color: #991b1b; }
+        .type-pc { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); border-left: 4px solid #a855f7; color: #6b21a8; }
+        .type-default { background: linear-gradient(135deg, #f3f4f6, #e5e7eb); border-left: 4px solid #6b7280; color: #374151; }
+        .dark .type-lecture { background: linear-gradient(135deg, #1e3a8a, #1e40af); color: #dbeafe; }
+        .dark .type-practice { background: linear-gradient(135deg, #14532d, #166534); color: #dcfce7; }
+        .dark .type-lab { background: linear-gradient(135deg, #78350f, #92400e); color: #fef3c7; }
+        .dark .type-seminar { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fee2e2; }
+        .dark .type-pc { background: linear-gradient(135deg, #581c87, #6b21a8); color: #f3e8ff; }
+        .dark .type-default { background: linear-gradient(135deg, #374151, #4b5563); color: #e5e7eb; }
+    </style>
 
-            .dark .schedule-item-lecture {
-                background: linear-gradient(to right, #1e3a8a, #1e40af) !important;
-                color: #dbeafe !important;
-                border-left: 4px solid #3b82f6 !important;
-            }
-
-            .schedule-item-practice {
-                background: linear-gradient(to right, #dcfce7, #bbf7d0) !important;
-                color: #166534 !important;
-                border-left: 4px solid #22c55e !important;
-            }
-
-            .dark .schedule-item-practice {
-                background: linear-gradient(to right, #14532d, #166534) !important;
-                color: #dcfce7 !important;
-                border-left: 4px solid #22c55e !important;
-            }
-
-            .schedule-item-default {
-                background: linear-gradient(to right, #f3f4f6, #e5e7eb) !important;
-                color: #374151 !important;
-                border-left: 4px solid #6b7280 !important;
-            }
-
-            .dark .schedule-item-default {
-                background: linear-gradient(to right, #374151, #4b5563) !important;
-                color: #e5e7eb !important;
-                border-left: 4px solid #6b7280 !important;
-            }
-
-            /* Перезаписываем все возможные стили Filament */
-            .schedule-item-lecture *,
-            .schedule-item-practice *,
-            .schedule-item-default * {
-                color: inherit !important;
-            }
-
-            .schedule-item-lecture:hover,
-            .schedule-item-practice:hover,
-            .schedule-item-default:hover {
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-            }
-
-            /* Убираем выделение строк при наведении */
-            .schedule-table tr:hover {
-                background-color: transparent !important;
-            }
-
-            .schedule-table tr:hover td {
-                background-color: transparent !important;
-            }
-
-            /* Исправляем стили тултипов - перебиваем Filament */
-            [title] {
-                position: relative !important;
-            }
-
-            /* Стили для тултипов в светлой теме */
-            .schedule-item-lecture[title]:hover::after,
-            .schedule-item-practice[title]:hover::after,
-            .schedule-item-default[title]:hover::after {
-                content: attr(title) !important;
-                position: absolute !important;
-                bottom: 100% !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                background-color: #1f2937 !important;
-                color: #f9fafb !important;
-                padding: 8px 12px !important;
-                border-radius: 6px !important;
-                font-size: 12px !important;
-                white-space: pre-line !important;
-                z-index: 1000 !important;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-                border: 1px solid #374151 !important;
-                max-width: 200px !important;
-                word-wrap: break-word !important;
-            }
-
-            /* Стили для тултипов в темной теме */
-            .dark .schedule-item-lecture[title]:hover::after,
-            .dark .schedule-item-practice[title]:hover::after,
-            .dark .schedule-item-default[title]:hover::after {
-                background-color: #f9fafb !important;
-                color: #1f2937 !important;
-                border: 1px solid #d1d5db !important;
-            }
-
-            /* Убираем стандартные тултипы браузера */
-            .schedule-item-lecture[title],
-            .schedule-item-practice[title],
-            .schedule-item-default[title] {
-                text-decoration: none !important;
-            }
-
-            /* Исправляем стили кнопок в модальном окне */
-            .modal-button-save {
-                background-color: #2563eb !important;
-                color: #ffffff !important;
-                border-color: #2563eb !important;
-            }
-
-            .dark .modal-button-save {
-                background-color: #3b82f6 !important;
-                color: #ffffff !important;
-                border-color: #3b82f6 !important;
-            }
-
-            .modal-button-cancel {
-                background-color: #ffffff !important;
-                color: #374151 !important;
-                border-color: #d1d5db !important;
-            }
-
-            .dark .modal-button-cancel {
-                background-color: #4b5563 !important;
-                color: #e5e7eb !important;
-                border-color: #6b7280 !important;
-            }
-        </style>
-    
-    <div class="space-y-6" x-data="scheduleManagementApp()" x-init="init()">
-        <!-- Форма фильтров -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Фільтри розкладу
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Course selection -->
+    <div class="space-y-6">
+        {{-- Filters --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {{-- Version --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Курс
-                    </label>
-                    <select x-model="selectedCourse" 
-                            @change="onCourseChange()"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                        <option value="">Оберіть курс</option>
-                        <template x-for="course in courses" :key="course.id">
-                            <option :value="course.id" x-text="course.name + ' (' + course.number + ' курс)'"></option>
-                        </template>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Версія розкладу</label>
+                    <select wire:model.live="selectedVersion"
+                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
+                        <option value="">Оберіть версію</option>
+                        @foreach($this->versions as $version)
+                            <option value="{{ $version->id }}">
+                                {{ $version->name }}
+                                ({{ match($version->status) { 'draft' => '⬜ Чернетка', 'published' => '🟢 Опубліковано', 'archived' => '⬛ Архів', default => $version->status } }})
+                                — {{ $version->assignments_count }} занять
+                            </option>
+                        @endforeach
                     </select>
                 </div>
 
-                <!-- Group selection -->
+                {{-- Group --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Група
-                    </label>
-                    <select x-model="selectedGroup" 
-                            @change="onGroupChange()"
-                            :disabled="!selectedCourse || loadingGroups"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="">Оберіть групу</option>
-                        <template x-for="group in groups" :key="group.id">
-                            <option :value="group.id" x-text="group.name"></option>
-                        </template>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Група (фільтр)</label>
+                    <select wire:model.live="selectedGroup"
+                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
+                        <option value="">Всі групи</option>
+                        @foreach($this->groups as $group)
+                            <option value="{{ $group->id }}">{{ $group->name }}</option>
+                        @endforeach
                     </select>
-                    <div x-show="loadingGroups" class="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                        Завантаження груп...
-                    </div>
                 </div>
 
-                <!-- Date range selection -->
+                {{-- Start Date --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Період
-                    </label>
-                    <div class="flex space-x-2">
-                        <input 
-                            type="date" 
-                            x-model="startDate" 
-                            @change="onDateRangeChange()"
-                            :disabled="!selectedGroup || loadingSchedule"
-                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span class="flex items-center text-gray-500 dark:text-gray-400">-</span>
-                        <input 
-                            type="date" 
-                            x-model="endDate" 
-                            @change="onDateRangeChange()"
-                            :disabled="!selectedGroup || loadingSchedule"
-                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                    </div>
-                    <div x-show="dateRangeError" class="mt-2 text-sm text-red-600 dark:text-red-400" x-text="dateRangeError"></div>
-                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Мінімум 1 день, максимум 2 тижні
-                    </div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Від</label>
+                    <input type="date" wire:model.live="startDate"
+                        @if($this->calendar) min="{{ $this->calendar->start_date->format('Y-m-d') }}" max="{{ $this->calendar->end_date->format('Y-m-d') }}" @endif
+                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
+                </div>
+
+                {{-- End Date --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">До</label>
+                    <input type="date" wire:model.live="endDate"
+                        @if($this->calendar) min="{{ $this->calendar->start_date->format('Y-m-d') }}" max="{{ $this->calendar->end_date->format('Y-m-d') }}" @endif
+                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
                 </div>
             </div>
+
+            @if($this->calendar)
+                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    📅 Календар: {{ $this->calendar->name }} ({{ $this->calendar->start_date->format('d.m.Y') }} — {{ $this->calendar->end_date->format('d.m.Y') }})
+                </div>
+            @endif
         </div>
 
-        <!-- Интерактивная таблица расписания -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                    Управління розкладом
-                    <span x-show="selectedGroup" x-text="'для групи ' + getGroupName()"></span>
-                </h2>
-            </div>
+        {{-- Schedule Table --}}
+        @php $data = $this->scheduleData; @endphp
 
-            <!-- Загрузочное состояние -->
-            <div x-show="loadingSchedule" class="p-8 text-center">
-                <div class="inline-flex items-center">
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Завантаження розкладу...
+        @if($this->selectedVersion && !empty($data['dateRange']))
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Розклад
+                        @if($this->selectedGroup)
+                            — {{ $this->groups->firstWhere('id', $this->selectedGroup)?->name }}
+                        @endif
+                    </h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ count($data['dateRange']) }} днів
+                    </span>
                 </div>
-            </div>
 
-                <!-- Таблица расписания -->
-                <div x-show="!loadingSchedule && scheduleData" class="p-6">
-                    <div class="overflow-x-auto">
-                        <table class="schedule-table min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
-                                        Час
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700/50">
+                                <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase border-b dark:border-gray-600 w-20 sticky left-0 bg-gray-50 dark:bg-gray-700/50 z-10">
+                                    Пара
+                                </th>
+                                @foreach($data['dateRange'] as $day)
+                                    <th class="px-3 py-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase border-b dark:border-gray-600 schedule-cell">
+                                        <div>{{ $day['day_name'] }}</div>
+                                        <div class="text-xs font-normal">{{ $day['formatted'] }}</div>
                                     </th>
-                                    <template x-for="dateInfo in dateRange" :key="dateInfo.date">
-                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 last:border-r-0">
-                                            <div x-text="dateInfo.day_name"></div>
-                                            <div class="text-xs font-normal" x-text="dateInfo.formatted"></div>
-                                        </th>
-                                    </template>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($this->timeSlots as $slot)
+                                <tr>
+                                    <td class="px-3 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 whitespace-nowrap sticky left-0 bg-white dark:bg-gray-800 z-10">
+                                        <div class="text-gray-400">{{ $slot->slot_index }} пара</div>
+                                        <div>{{ substr($slot->start_time, 0, 5) }}-{{ substr($slot->end_time, 0, 5) }}</div>
+                                    </td>
+                                    @foreach($data['dateRange'] as $day)
+                                        @php $item = $data['matrix'][$day['date']][$slot->slot_index] ?? null; @endphp
+                                        <td class="px-1 py-1 border-b dark:border-gray-700 schedule-cell">
+                                            @if($item)
+                                                <div class="schedule-item rounded-lg p-2 text-xs cursor-pointer relative group
+                                                    type-{{ $item['type'] ?? 'default' }}"
+                                                    wire:click="openEditModal({{ $item['id'] }})">
+                                                    <div class="font-semibold truncate">{{ $item['subject'] }}</div>
+                                                    <div class="truncate opacity-80">{{ $item['teacher'] }}</div>
+                                                    @if($item['groups'])
+                                                        <div class="truncate opacity-70 text-[10px]">{{ $item['groups'] }}</div>
+                                                    @endif
+                                                    @if($item['room'])
+                                                        <div class="truncate opacity-70">🏫 {{ $item['room'] }}</div>
+                                                    @endif
+                                                    @if($item['parity'] !== 'both')
+                                                        <span class="absolute top-1 right-1 text-[9px] px-1 rounded bg-white/50 dark:bg-black/30">
+                                                            {{ $item['parity'] === 'num' ? 'Ч' : 'З' }}
+                                                        </span>
+                                                    @endif
+                                                    @if($item['locked'])
+                                                        <span class="absolute bottom-1 right-1 text-[10px]">🔒</span>
+                                                    @endif
+                                                    {{-- Hover actions --}}
+                                                    <div class="absolute top-0 right-0 hidden group-hover:flex gap-0.5 p-0.5">
+                                                        <button wire:click.stop="toggleLock({{ $item['id'] }})"
+                                                            class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-white dark:hover:bg-gray-700"
+                                                            title="{{ $item['locked'] ? 'Розблокувати' : 'Заблокувати' }}">
+                                                            {{ $item['locked'] ? '🔓' : '🔒' }}
+                                                        </button>
+                                                        @if(!$item['locked'])
+                                                            <button wire:click.stop="deleteAssignment({{ $item['id'] }})"
+                                                                wire:confirm="Видалити це заняття?"
+                                                                class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-red-100 dark:hover:bg-red-900/50"
+                                                                title="Видалити">
+                                                                🗑️
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 p-2 text-center text-gray-400 dark:text-gray-500 text-xs h-12 flex items-center justify-center">
+                                                    —
+                                                </div>
+                                            @endif
+                                        </td>
+                                    @endforeach
                                 </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="timeSlot in timeSlots" :key="timeSlot">
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white" x-text="timeSlot"></td>
-                                        <template x-for="dateInfo in dateRange" :key="dateInfo.date">
-                                            <td class="px-2 py-3 text-center">
-                                                <div x-show="getScheduleItem(dateInfo.date, timeSlot)" 
-                                                     x-transition:enter="transition ease-out duration-200"
-                                                     x-transition:enter-start="opacity-0 scale-95"
-                                                     x-transition:enter-end="opacity-100 scale-100"
-                                                     class="p-2 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                                                     :class="getSubjectClass(getScheduleItem(dateInfo.date, timeSlot)?.subject_type)"
-                                                     :title="'Викладач: ' + getScheduleItem(dateInfo.date, timeSlot)?.teacher + (getScheduleItem(dateInfo.date, timeSlot)?.classroom ? '\nАудиторія: ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom : '')"
-                                                     @click="openEditModal(getScheduleItem(dateInfo.date, timeSlot)?.id, getScheduleItem(dateInfo.date, timeSlot)?.subject, getScheduleItem(dateInfo.date, timeSlot)?.teacher, getScheduleItem(dateInfo.date, timeSlot)?.classroom || '', dateInfo.date, timeSlot, getScheduleItem(dateInfo.date, timeSlot)?.week_number, dateInfo.date)">
-                                                    <div class="font-medium truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.subject"></div>
-                                                    <div class="truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.teacher"></div>
-                                                    <div x-show="getScheduleItem(dateInfo.date, timeSlot)?.classroom" 
-                                                         class="truncate" 
-                                                         x-text="'Ауд. ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom"></div>
-                                                </div>
-                                                <div x-show="!getScheduleItem(dateInfo.date, timeSlot)" 
-                                                     class="p-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 text-center cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"
-                                                     @click="openAddModal(dateInfo.date, timeSlot)">
-                                                    <div class="text-xs">+ Додати заняття</div>
-                                                </div>
-                                            </td>
-                                        </template>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-
-            <!-- Сообщение о выборе группы и недели -->
-            <div x-show="!selectedGroup && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
-                <div class="text-lg mb-2">📚</div>
-                <p>Оберіть курс та групу для управління розкладом</p>
             </div>
-            
-            <div x-show="selectedGroup && (!startDate || !endDate) && !loadingSchedule" class="my-3 p-8 text-center text-gray-500 dark:text-gray-400">
-                <div class="text-lg mb-2">📅</div>
-                <p>Оберіть період для управління розкладом</p>
+        @elseif(!$this->selectedVersion)
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400">
+                <div class="text-5xl mb-4">📋</div>
+                <p class="text-lg">Оберіть версію розкладу для перегляду</p>
             </div>
-        </div>
+        @else
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400">
+                <div class="text-5xl mb-4">📅</div>
+                <p class="text-lg">Немає даних для обраного періоду</p>
+            </div>
+        @endif
+    </div>
 
-        <!-- Модальное окно для редактирования/добавления занятия -->
-    <div x-show="showModal"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto"
-         style="display: none;">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+    {{-- Edit Modal --}}
+    @if($showEditModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" x-data x-init="$el.focus()" @keydown.escape="$wire.closeEditModal()">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="fixed inset-0 bg-gray-900/50 transition-opacity" wire:click="closeEditModal"></div>
 
-            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200 dark:border-gray-600"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-                <form @submit.prevent="saveLesson()">
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" x-text="isEditing ? 'Редагувати заняття' : 'Додати заняття'"></h3>
-                                <div class="mt-4 space-y-4">
-                                    <!-- Предмет -->
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Предмет
-                                        </label>
-                                        <select x-model="formData.subject_id"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                required>
-                                            <option value="">Оберіть предмет</option>
-                                            <template x-for="subject in subjects" :key="subject.id">
-                                                <option :value="subject.id" x-text="subject.name"></option>
-                                            </template>
-                                        </select>
-                                    </div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 z-10">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Редагувати заняття</h3>
+                        @php
+                            $editingAssignment = $editingAssignmentId ? \App\Models\ScheduleAssignment::with('activity.subject', 'activity.teachers', 'activity.groups')->find($editingAssignmentId) : null;
+                        @endphp
+                        @if($editingAssignment)
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {{ $editingAssignment->activity?->subject?->name ?? '—' }}
+                                | {{ $editingAssignment->activity?->teachers?->pluck('name')->join(', ') }}
+                                | {{ $editingAssignment->activity?->groups?->pluck('name')->join(', ') }}
+                            </p>
+                        @endif
+                    </div>
 
-                                    <!-- Преподаватель -->
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Викладач
-                                        </label>
-                                        <select x-model="formData.teacher_id"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                required>
-                                            <option value="">Оберіть викладача</option>
-                                            <template x-for="teacher in teachers" :key="teacher.id">
-                                                <option :value="teacher.id" x-text="teacher.name"></option>
-                                            </template>
-                                        </select>
-                                    </div>
+                    <div class="p-6 space-y-4">
+                        {{-- Room --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Аудиторія</label>
+                            <select wire:model="modalRoomId"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Без аудиторії</option>
+                                @foreach($this->rooms as $room)
+                                    <option value="{{ $room->id }}">{{ $room->code }} — {{ $room->title }} ({{ $room->capacity }} місць)</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                                    <!-- Аудитория -->
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Аудиторія
-                                        </label>
-                                        <input type="text"
-                                               x-model="formData.classroom"
-                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                                               placeholder="Наприклад: 101">
-                                    </div>
+                        {{-- Day --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">День тижня</label>
+                            <select wire:model="modalDayOfWeek"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="1">Понеділок</option>
+                                <option value="2">Вівторок</option>
+                                <option value="3">Середа</option>
+                                <option value="4">Четвер</option>
+                                <option value="5">П'ятниця</option>
+                                <option value="6">Субота</option>
+                                <option value="7">Неділя</option>
+                            </select>
+                        </div>
 
+                        {{-- Slot --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Пара</label>
+                            <select wire:model="modalSlotIndex"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                @foreach($this->timeSlots as $slot)
+                                    <option value="{{ $slot->slot_index }}">{{ $slot->slot_index }} пара ({{ substr($slot->start_time, 0, 5) }}-{{ substr($slot->end_time, 0, 5) }})</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                                    <!-- Дата -->
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Дата
-                                        </label>
-                                        <input type="date" 
-                                               x-model="formData.date" 
-                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                               placeholder="Дата занятия"
-                                               required>
-                                    </div>
-                                </div>
-                            </div>
+                        {{-- Parity --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Парність</label>
+                            <select wire:model="modalParity"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="both">Обидва тижні</option>
+                                <option value="num">Чисельник</option>
+                                <option value="den">Знаменник</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button type="submit"
-                                        :disabled="loading"
-                                        class="modal-button-save mr-3 mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 dark:bg-blue-500 text-base font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        style="background-color: #2563eb !important; color: #ffffff !important; border-color: #2563eb !important;">
-                            <span x-show="!loading" x-text="isEditing ? 'Зберегти' : 'Додати'"></span>
-                            <span x-show="loading" class="flex items-center">
-                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Збереження...
-                            </span>
-                        </button>
-                                <button type="button"
-                                        @click="closeModal()"
-                                        class="modal-button-cancel mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                        style="background-color: #ffffff !important; color: #374151 !important; border-color: #d1d5db !important;">
+
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                        <button wire:click="closeEditModal"
+                            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
                             Скасувати
                         </button>
+                        <button wire:click="saveAssignment"
+                            class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
+                            Зберегти
+                        </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
-    </div>
-
-    <script>
-    function scheduleManagementApp() {
-        return {
-            selectedCourse: '',
-            selectedGroup: '',
-            startDate: '',
-            endDate: '',
-            courses: [],
-            groups: [],
-            weeks: [],
-            subjects: [],
-            teachers: [],
-            scheduleData: null,
-            dateRange: [],
-            loadingGroups: false,
-            loadingSchedule: false,
-            dateRangeError: '',
-            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
-            timeSlots: {
-                '08:00-09:30': '08:00-09:30',
-                '09:45-11:15': '09:45-11:15',
-                '11:30-13:00': '11:30-13:00',
-                '13:15-14:45': '13:15-14:45',
-                '15:00-16:30': '15:00-16:30',
-                '16:45-18:15': '16:45-18:15',
-                '18:30-20:00': '18:30-20:00'
-            },
-            subjectTypes: {},
-            
-            // Модальное окно
-            showModal: false,
-            isEditing: false,
-            loading: false,
-            formData: {
-                id: null,
-                subject_id: '',
-                teacher_id: '',
-                classroom: '',
-                day_of_week: '',
-                time_slot: '',
-                week_number: '',
-                date: ''
-            },
-
-            async init() {
-                await this.loadCourses();
-                await this.loadCurrentWeek();
-                await this.loadWeeks();
-                await this.loadSubjects();
-                await this.loadTeachers();
-            },
-
-            async loadCurrentWeek() {
-                try {
-                    const response = await fetch('/api/current-week');
-                    const data = await response.json();
-                    this.startDate = data.start_date;
-                    this.endDate = data.end_date;
-                } catch (error) {
-                    console.error('Error loading current week:', error);
-                }
-            },
-
-            async loadCourses() {
-                try {
-                    const response = await fetch('/api/courses');
-                    this.courses = await response.json();
-                } catch (error) {
-                    console.error('Ошибка загрузки курсов:', error);
-                    this.courses = [];
-                }
-            },
-
-            async onCourseChange() {
-                this.selectedGroup = '';
-                this.scheduleData = null;
-                
-                if (!this.selectedCourse) {
-                    this.groups = [];
-                    return;
-                }
-
-                this.loadingGroups = true;
-                try {
-                    const response = await fetch(`/api/courses/${this.selectedCourse}/groups`);
-                    this.groups = await response.json();
-                } catch (error) {
-                    console.error('Ошибка загрузки групп:', error);
-                    this.groups = [];
-                } finally {
-                    this.loadingGroups = false;
-                }
-            },
-
-            async onGroupChange() {
-                this.scheduleData = null;
-                
-                if (this.selectedGroup && this.startDate && this.endDate) {
-                    await this.loadSchedule();
-                }
-            },
-
-            async onDateRangeChange() {
-                this.dateRangeError = '';
-                
-                if (!this.startDate || !this.endDate) {
-                    this.scheduleData = null;
-                    return;
-                }
-
-                // Validate date range
-                const start = new Date(this.startDate);
-                const end = new Date(this.endDate);
-                const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays > 14) {
-                    this.dateRangeError = 'Діапазон дат не може перевищувати 2 тижні (14 днів)';
-                    this.scheduleData = null;
-                    return;
-                }
-
-                if (start > end) {
-                    this.dateRangeError = 'Дата початку не може бути пізніше дати закінчення';
-                    this.scheduleData = null;
-                    return;
-                }
-
-                if (this.selectedGroup) {
-                    await this.loadSchedule();
-                }
-            },
-
-            async loadWeeks() {
-                try {
-                    const response = await fetch('/api/weeks');
-                    this.weeks = await response.json();
-                } catch (error) {
-                    console.error('Ошибка загрузки недель:', error);
-                    this.weeks = [];
-                }
-            },
-
-            async loadSubjects() {
-                try {
-                    const response = await fetch('/api/subjects');
-                    this.subjects = await response.json();
-                } catch (error) {
-                    console.error('Ошибка загрузки предметов:', error);
-                    this.subjects = [];
-                }
-            },
-
-            async loadTeachers() {
-                try {
-                    const response = await fetch('/api/teachers');
-                    this.teachers = await response.json();
-                } catch (error) {
-                    console.error('Ошибка загрузки преподавателей:', error);
-                    this.teachers = [];
-                }
-            },
-
-            async loadSchedule(forceRefresh = false) {
-                if (!this.selectedGroup || !this.startDate || !this.endDate) return;
-
-                this.loadingSchedule = true;
-                try {
-                    // Добавляем timestamp для предотвращения кэширования
-                    const timestamp = forceRefresh ? `?t=${Date.now()}` : '';
-                    const url = `/api/groups/${this.selectedGroup}/schedule/${this.startDate}/${this.endDate}${timestamp}`;
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    
-                    // Очищаем старые данные перед загрузкой новых
-                    this.scheduleData = null;
-                    
-                    // Небольшая задержка для визуального обновления
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    this.scheduleData = data.schedule;
-                    this.dateRange = data.date_range;
-                    // Не перезаписываем daysOfWeek и timeSlots, они уже инициализированы
-                    this.subjectTypes = data.subject_types;
-                } catch (error) {
-                    console.error('Error loading schedule:', error);
-                    this.scheduleData = null;
-                } finally {
-                    this.loadingSchedule = false;
-                }
-            },
-
-            getGroupName() {
-                const group = this.groups.find(g => g.id == this.selectedGroup);
-                return group ? group.name : '';
-            },
-
-            getDayName(day) {
-                const dayNames = {
-                    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 
-                    5: 'Пт', 6: 'Сб', 7: 'Нд'
-                };
-                return dayNames[day] || day;
-            },
-
-            getScheduleItem(date, timeSlot) {
-                return this.scheduleData?.[date]?.[timeSlot] || null;
-            },
-
-            getSubjectClass(subjectType) {
-                if (subjectType === 'lecture') {
-                    return 'schedule-item-lecture';
-                } else if (subjectType === 'practice') {
-                    return 'schedule-item-practice';
-                } else {
-                    return 'schedule-item-default';
-                }
-            },
-
-            openEditModal(id, subject, teacher, classroom, date, time, week, scheduleDate) {
-                this.isEditing = true;
-                this.formData = {
-                    id: id,
-                    subject_id: this.subjects.find(s => s.name === subject)?.id || '',
-                    teacher_id: this.teachers.find(t => t.name === teacher)?.id || '',
-                    classroom: classroom || '',
-                    day_of_week: this.getDayOfWeekFromDate(date),
-                    time_slot: time,
-                    week_number: week || '',
-                    date: date
-                };
-                this.showModal = true;
-            },
-
-            openAddModal(date, time) {
-                this.isEditing = false;
-                this.formData = {
-                    id: null,
-                    subject_id: '',
-                    teacher_id: '',
-                    classroom: '',
-                    day_of_week: this.getDayOfWeekFromDate(date),
-                    time_slot: time,
-                    week_number: '',
-                    date: date
-                };
-                this.showModal = true;
-            },
-
-            getDayOfWeekFromDate(dateString) {
-                const date = new Date(dateString);
-                return date.getDay() === 0 ? 7 : date.getDay(); // Convert Sunday (0) to 7
-            },
-
-            closeModal() {
-                this.showModal = false;
-                this.formData = {
-                    id: null,
-                    subject_id: '',
-                    teacher_id: '',
-                    classroom: '',
-                    day_of_week: '',
-                    time_slot: '',
-                    week_number: '',
-                    date: ''
-                };
-            },
-
-            async saveLesson() {
-                this.loading = true;
-                try {
-                    const url = this.isEditing ? `/api/schedules/${this.formData.id}` : '/api/schedules';
-                    const method = this.isEditing ? 'PUT' : 'POST';
-                    
-                    const requestData = {
-                        ...this.formData,
-                        group_id: this.selectedGroup
-                    };
-                    
-                    const response = await fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(requestData)
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok && result.success) {
-                        this.closeModal();
-                        
-                        // Показываем уведомление об успехе
-                        this.showNotification('success', result.message);
-                        
-                        // Перезагружаем расписание
-                        await this.loadSchedule(true);
-                    } else {
-                        // Показываем ошибку
-                        this.showNotification('error', result.message || 'Невідома помилка');
-                    }
-                } catch (error) {
-                    console.error('Error saving:', error);
-                    this.showNotification('error', 'Помилка збереження заняття: ' + error.message);
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async updateScheduleData(newSchedule) {
-                if (!newSchedule || !this.scheduleData) return;
-                
-                // Обновляем конкретный элемент в расписании
-                const day = newSchedule.day_of_week;
-                const timeSlot = newSchedule.time_slot;
-                
-                // Добавляем новое занятие
-                if (!this.scheduleData[day]) {
-                    this.scheduleData[day] = {};
-                }
-                this.scheduleData[day][timeSlot] = {
-                    id: newSchedule.id,
-                    subject: newSchedule.subject?.name || 'Невідомий предмет',
-                    subject_type: newSchedule.subject?.type || 'lecture',
-                    teacher: newSchedule.teacher?.name || 'Невідомий викладач',
-                    classroom: newSchedule.classroom,
-                    week_number: newSchedule.week_number
-                };
-                
-                // Принудительно обновляем Alpine.js
-                this.$nextTick(() => {
-                    this.scheduleData = { ...this.scheduleData };
-                });
-            },
-
-            showNotification(type, message) {
-                // Создаем уведомление
-                const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl max-w-sm border-2 ${
-                    type === 'success' 
-                        ? 'bg-green-100 dark:bg-green-800 border-green-300 dark:border-green-600 text-green-900 dark:text-green-100' 
-                        : 'bg-red-100 dark:bg-red-800 border-red-300 dark:border-red-600 text-red-900 dark:text-red-100'
-                }`;
-                
-                // Добавляем inline стили для принудительного перебивания Filament
-                notification.style.cssText = `
-                    background-color: ${type === 'success' ? '#dcfce7' : '#fecaca'} !important;
-                    border-color: ${type === 'success' ? '#16a34a' : '#dc2626'} !important;
-                    color: ${type === 'success' ? '#14532d' : '#991b1b'} !important;
-                    opacity: 1 !important;
-                    z-index: 9999 !important;
-                `;
-                
-                // Для темной темы
-                if (document.documentElement.classList.contains('dark')) {
-                    notification.style.cssText = `
-                        background-color: ${type === 'success' ? '#166534' : '#991b1b'} !important;
-                        border-color: ${type === 'success' ? '#22c55e' : '#ef4444'} !important;
-                        color: ${type === 'success' ? '#dcfce7' : '#fecaca'} !important;
-                        opacity: 1 !important;
-                        z-index: 9999 !important;
-                    `;
-                }
-                
-                // Принудительно обновляем стили кнопок в модальном окне
-                setTimeout(() => {
-                    const saveButton = document.querySelector('.modal-button-save');
-                    const cancelButton = document.querySelector('.modal-button-cancel');
-                    
-                    if (saveButton) {
-                        if (document.documentElement.classList.contains('dark')) {
-                            saveButton.style.cssText = 'background-color: #3b82f6 !important; color: #ffffff !important; border-color: #3b82f6 !important;';
-                        } else {
-                            saveButton.style.cssText = 'background-color: #2563eb !important; color: #ffffff !important; border-color: #2563eb !important;';
-                        }
-                    }
-                    
-                    if (cancelButton) {
-                        if (document.documentElement.classList.contains('dark')) {
-                            cancelButton.style.cssText = 'background-color: #4b5563 !important; color: #e5e7eb !important; border-color: #6b7280 !important;';
-                        } else {
-                            cancelButton.style.cssText = 'background-color: #ffffff !important; color: #374151 !important; border-color: #d1d5db !important;';
-                        }
-                    }
-                }, 100);
-                
-                notification.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            ${type === 'success' 
-                                ? '<svg class="h-5 w-5 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
-                                : '<svg class="h-5 w-5 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>'
-                            }
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm font-medium">${message}</p>
-                        </div>
-                        <div class="ml-auto pl-3">
-                            <button onclick="this.parentElement.parentElement.remove()" class="inline-flex text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(notification);
-                
-                // Автоматически удаляем уведомление через 5 секунд
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.remove();
-                    }
-                }, 5000);
-            }
-        }
-    }
-    </script>
+    @endif
 </x-filament-panels::page>
