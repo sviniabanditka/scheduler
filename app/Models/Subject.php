@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Traits\TenantScope;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,52 +11,53 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subject extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScope;
 
     protected $fillable = [
+        'tenant_id',
         'name',
         'teacher_id',
         'type',
     ];
 
-    // Constants for subject types
     public const TYPE_LECTURE = 'lecture';
     public const TYPE_PRACTICE = 'practice';
+    public const TYPE_LAB = 'lab';
+    public const TYPE_SEMINAR = 'seminar';
+    public const TYPE_PC = 'pc';
 
     public const TYPES = [
         self::TYPE_LECTURE => 'Лекція',
         self::TYPE_PRACTICE => 'Практика',
+        self::TYPE_LAB => 'Лабораторна',
+        self::TYPE_SEMINAR => 'Семінар',
+        self::TYPE_PC => 'Комп\'ютерний клас',
     ];
 
-    /**
-     * Get the teacher that teaches this subject.
-     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class);
     }
 
-    /**
-     * Get the schedules for this subject.
-     */
-    public function schedules(): HasMany
+    public function activities(): HasMany
     {
-        return $this->hasMany(Schedule::class);
+        return $this->hasMany(Activity::class);
     }
 
-    /**
-     * Get the type label.
-     */
     public function getTypeLabelAttribute(): string
     {
         return self::TYPES[$this->type] ?? $this->type;
     }
 
-    /**
-     * Validation rules for subject.
-     */
     public static function rules($id = null): array
     {
+        $tenantId = app('tenant')?->id;
+        
         return [
             'name' => 'required|string|max:255',
             'teacher_id' => 'required|exists:teachers,id',

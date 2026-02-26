@@ -2,13 +2,12 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Course;
+use App\Models\Calendar;
 use App\Models\Group;
-use App\Models\Schedule;
-use App\Models\Subject;
-use App\Models\Teacher;
+use App\Models\Room;
+use App\Models\ScheduleAssignment;
+use App\Models\ScheduleVersion;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
@@ -35,28 +34,20 @@ class ScheduleManagement extends Page implements HasTable
 
     protected static ?string $navigationGroup = 'Розклад';
 
-    public ?int $selectedCourse = null;
+    public ?int $selectedVersion = null;
     public ?int $selectedGroup = null;
-    public ?string $startDate = null;
-    public ?string $endDate = null;
 
     public function mount(): void
     {
-        // Set default date range to current week
-        $today = new \DateTime();
-        $dayOfWeek = $today->format('N'); // 1 = Monday, 7 = Sunday
-        
-        // Calculate start of week (Monday)
-        $startOfWeek = clone $today;
-        $startOfWeek->modify('-' . ($dayOfWeek - 1) . ' days');
-        
-        // Calculate end of week (Sunday)
-        $endOfWeek = clone $startOfWeek;
-        $endOfWeek->modify('+6 days');
-        
-        $this->startDate = $startOfWeek->format('Y-m-d');
-        $this->endDate = $endOfWeek->format('Y-m-d');
-        
+        // Find latest published version for current tenant
+        $latestVersion = ScheduleVersion::where('status', 'published')
+            ->latest('published_at')
+            ->first();
+
+        if ($latestVersion) {
+            $this->selectedVersion = $latestVersion->id;
+        }
+
         $this->form->fill();
     }
 
@@ -64,33 +55,24 @@ class ScheduleManagement extends Page implements HasTable
     {
         return $form
             ->schema([
-                Select::make('selectedCourse')
-                    ->label('Курс')
-                    ->options(Course::all()->pluck('name', 'id'))
+                Select::make('selectedVersion')
+                    ->label('Версія розкладу')
+                    ->options(
+                        ScheduleVersion::with('calendar')
+                            ->orderByDesc('created_at')
+                            ->get()
+                            ->mapWithKeys(fn ($v) => [
+                                $v->id => "{$v->name} ({$v->status}) — {$v->calendar->name}",
+                            ])
+                    )
                     ->reactive()
-                    ->afterStateUpdated(fn () => $this->selectedGroup = null)
-                    ->placeholder('Оберіть курс'),
+                    ->placeholder('Оберіть версію'),
                 
                 Select::make('selectedGroup')
                     ->label('Група')
-                    ->options(function () {
-                        if (!$this->selectedCourse) {
-                            return [];
-                        }
-                        return Group::where('course_id', $this->selectedCourse)->pluck('name', 'id');
-                    })
+                    ->options(Group::where('active', true)->pluck('name', 'id'))
                     ->reactive()
-                    ->placeholder('Оберіть групу'),
-                
-                \Filament\Forms\Components\DatePicker::make('startDate')
-                    ->label('Дата початку')
-                    ->reactive()
-                    ->afterStateUpdated(fn () => $this->validateDateRange()),
-                
-                \Filament\Forms\Components\DatePicker::make('endDate')
-                    ->label('Дата закінчення')
-                    ->reactive()
-                    ->afterStateUpdated(fn () => $this->validateDateRange()),
+                    ->placeholder('Всі групи'),
             ])
             ->statePath('data');
     }
@@ -102,104 +84,69 @@ class ScheduleManagement extends Page implements HasTable
             ->columns([
                 TextColumn::make('day_of_week')
                     ->label('День тижня')
-                    ->formatStateUsing(fn (int $state): string => Schedule::DAYS_OF_WEEK[$state] ?? 'Невідомо')
+                    ->formatStateUsing(function (int $state): string {
+                        $days = [
+                            1 => 'Понеділок', 2 => 'Вівторок', 3 => 'Середа',
+                            4 => 'Четвер', 5 => "П'ятниця", 6 => 'Субота', 7 => 'Неділя',
+                        ];
+                        return $days[$state] ?? 'Невідомо';
+                    })
                     ->sortable(),
                 
-                TextColumn::make('time_slot')
-                    ->label('Час')
+                TextColumn::make('slot_index')
+                    ->label('Пара')
                     ->sortable(),
                 
-                TextColumn::make('subject.name')
+                TextColumn::make('activity.subject.name')
                     ->label('Предмет')
                     ->searchable(),
                 
-                TextColumn::make('teacher.name')
+                TextColumn::make('activity.activity_type')
+                    ->label('Тип')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'lecture' => 'info',
+                        'lab' => 'warning',
+                        'seminar' => 'success',
+                        'practice' => 'primary',
+                        'pc' => 'gray',
+                        default => 'gray',
+                    }),
+                
+                TextColumn::make('activity.teachers.name')
                     ->label('Викладач')
                     ->searchable(),
                 
-                TextColumn::make('classroom')
+                TextColumn::make('room.code')
                     ->label('Аудиторія')
-                    ->placeholder('Не вказана'),
-                
-                TextColumn::make('week_number')
-                    ->label('Тиждень')
-                    ->formatStateUsing(fn (?int $state): string => $state ? "Тиждень {$state}" : 'Всі тижні')
                     ->sortable(),
                 
-                TextColumn::make('date')
-                    ->label('Дата')
-                    ->date('d.m.Y')
-                    ->placeholder('Не вказана (повторюване)')
-                    ->sortable(),
-            ])
-            ->filters([
-                //
-            ])
-            ->actions([
-                Action::make('edit')
-                    ->label('Редагувати')
-                    ->icon('heroicon-o-pencil')
-                    ->form([
-                        Select::make('group_id')
-                            ->label('Група')
-                            ->options(Group::all()->pluck('name', 'id'))
-                            ->required(),
-                        
-                        Select::make('subject_id')
-                            ->label('Предмет')
-                            ->options(Subject::all()->pluck('name', 'id'))
-                            ->required(),
-                        
-                        Select::make('teacher_id')
-                            ->label('Викладач')
-                            ->options(Teacher::all()->pluck('name', 'id'))
-                            ->required(),
-                        
-                        Select::make('day_of_week')
-                            ->label('День тижня')
-                            ->options(Schedule::DAYS_OF_WEEK)
-                            ->required(),
-                        
-                        Select::make('time_slot')
-                            ->label('Час')
-                            ->options(Schedule::TIME_SLOTS)
-                            ->required(),
-                        
-                        Select::make('week_number')
-                            ->label('Тиждень')
-                            ->options(array_combine(range(1, 52), array_map(fn($i) => "Тиждень {$i}", range(1, 52))))
-                            ->nullable(),
-                        
-                        \Filament\Forms\Components\DatePicker::make('date')
-                            ->label('Дата')
-                            ->nullable()
-                            ->helperText('Залиште пустим для повторюваного заняття'),
-                        
-                        TextInput::make('classroom')
-                            ->label('Аудиторія')
-                            ->maxLength(50),
-                    ])
-                    ->fillForm(fn (Schedule $record): array => [
-                        'group_id' => $record->group_id,
-                        'subject_id' => $record->subject_id,
-                        'teacher_id' => $record->teacher_id,
-                        'day_of_week' => $record->day_of_week,
-                        'time_slot' => $record->time_slot,
-                        'week_number' => $record->week_number,
-                        'date' => $record->date,
-                        'classroom' => $record->classroom,
-                    ])
-                    ->action(function (Schedule $record, array $data): void {
-                        $this->validateSchedule($data, $record->id);
-                        $record->update($data);
+                TextColumn::make('parity')
+                    ->label('Парність')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'both' => 'Обидва',
+                        'num' => 'Чисельник',
+                        'den' => 'Знаменник',
+                        default => $state,
                     }),
                 
+                TextColumn::make('source')
+                    ->label('Джерело')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'solver' => 'success',
+                        'manual' => 'warning',
+                        default => 'gray',
+                    }),
+            ])
+            ->filters([])
+            ->actions([
                 Action::make('delete')
                     ->label('Видалити')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->action(fn (Schedule $record) => $record->delete()),
+                    ->action(fn (ScheduleAssignment $record) => $record->delete()),
             ])
             ->bulkActions([
                 BulkAction::make('delete')
@@ -210,103 +157,28 @@ class ScheduleManagement extends Page implements HasTable
                     ->action(fn (Collection $records) => $records->each->delete()),
             ])
             ->defaultSort('day_of_week')
-            ->defaultSort('time_slot');
+            ->defaultSort('slot_index');
     }
 
     protected function getTableQuery(): Builder
     {
-        $query = Schedule::query()
-            ->with(['group.course', 'subject', 'teacher']);
+        $query = ScheduleAssignment::query()
+            ->with(['activity.subject', 'activity.teachers', 'room']);
 
-        if ($this->selectedGroup) {
-            $query->where('group_id', $this->selectedGroup);
-        } elseif ($this->selectedCourse) {
-            $query->whereHas('group', function (Builder $q) {
-                $q->where('course_id', $this->selectedCourse);
-            });
+        if ($this->selectedVersion) {
+            $query->where('schedule_version_id', $this->selectedVersion);
+        } else {
+            $query->whereRaw('1 = 0'); // No version selected = no results
         }
 
-        if ($this->startDate && $this->endDate) {
-            $query->where(function ($q) {
-                $q->where(function ($subQ) {
-                    // Schedules with specific date within range
-                    $subQ->whereNotNull('date')
-                         ->whereBetween('date', [$this->startDate, $this->endDate]);
-                })->orWhere(function ($subQ) {
-                    // Schedules without date restrictions (recurring)
-                    $subQ->whereNull('date');
+        if ($this->selectedGroup) {
+            $query->whereHas('activity', function (Builder $q) {
+                $q->whereHas('groups', function (Builder $gq) {
+                    $gq->where('group_id', $this->selectedGroup);
                 });
             });
         }
 
         return $query;
-    }
-
-    public function validateDateRange(): void
-    {
-        if ($this->startDate && $this->endDate) {
-            $start = new \DateTime($this->startDate);
-            $end = new \DateTime($this->endDate);
-            $diff = $start->diff($end);
-            
-            if ($diff->days > 14) {
-                $this->addError('endDate', 'Діапазон дат не може перевищувати 2 тижні (14 днів)');
-            }
-            
-            if ($start > $end) {
-                $this->addError('endDate', 'Дата закінчення не може бути раніше дати початку');
-            }
-        }
-    }
-
-    protected function validateSchedule(array $data, ?int $excludeId = null): void
-    {
-        $query = Schedule::where('group_id', $data['group_id'])
-            ->where('day_of_week', $data['day_of_week'])
-            ->where('time_slot', $data['time_slot']);
-
-        if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
-            $query->where('week_number', $data['week_number']);
-        } else {
-            $query->whereNull('week_number');
-        }
-
-        if (isset($data['date']) && $data['date'] !== null && $data['date'] !== '') {
-            $query->where('date', $data['date']);
-        } else {
-            $query->whereNull('date');
-        }
-
-        if ($excludeId) {
-            $query->where('id', '!=', $excludeId);
-        }
-
-        if ($query->exists()) {
-            throw new \Exception('Конфлікт розкладу: група вже має заняття в цей час');
-        }
-
-        $teacherQuery = Schedule::where('teacher_id', $data['teacher_id'])
-            ->where('day_of_week', $data['day_of_week'])
-            ->where('time_slot', $data['time_slot']);
-
-        if (isset($data['week_number']) && $data['week_number'] !== null && $data['week_number'] !== '') {
-            $teacherQuery->where('week_number', $data['week_number']);
-        } else {
-            $teacherQuery->whereNull('week_number');
-        }
-
-        if (isset($data['date']) && $data['date'] !== null && $data['date'] !== '') {
-            $teacherQuery->where('date', $data['date']);
-        } else {
-            $teacherQuery->whereNull('date');
-        }
-
-        if ($excludeId) {
-            $teacherQuery->where('id', '!=', $excludeId);
-        }
-
-        if ($teacherQuery->exists()) {
-            throw new \Exception('Конфлікт розкладу: викладач вже зайнятий в цей час');
-        }
     }
 }

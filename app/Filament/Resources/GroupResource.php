@@ -72,9 +72,9 @@ class GroupResource extends Resource
                         'danger' => 4,
                     ]),
                 
-                Tables\Columns\TextColumn::make('schedules_count')
+                Tables\Columns\TextColumn::make('activities_count')
                     ->label('Занять')
-                    ->counts('schedules')
+                    ->counts('activities')
                     ->badge()
                     ->color('info'),
                 
@@ -101,9 +101,9 @@ class GroupResource extends Resource
                         4 => '4 курс',
                     ]),
                 
-                Tables\Filters\Filter::make('has_schedules')
-                    ->label('З розкладом')
-                    ->query(fn (Builder $query): Builder => $query->has('schedules')),
+                Tables\Filters\Filter::make('has_activities')
+                    ->label('З заняттями')
+                    ->query(fn (Builder $query): Builder => $query->has('activities')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

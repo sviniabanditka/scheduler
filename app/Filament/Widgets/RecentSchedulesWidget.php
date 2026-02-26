@@ -2,15 +2,15 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Schedule;
+use App\Models\ScheduleAssignment;
+use App\Models\ScheduleVersion;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
-use Illuminate\Database\Eloquent\Builder;
 
 class RecentSchedulesWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Останні додані заняття';
+    protected static ?string $heading = 'Останні версії розкладу';
     
     protected static ?int $sort = 4;
     
@@ -20,57 +20,42 @@ class RecentSchedulesWidget extends BaseWidget
     {
         return $table
             ->query(
-                Schedule::query()
-                    ->with(['subject', 'teacher', 'group'])
+                ScheduleVersion::query()
+                    ->with(['calendar', 'creator'])
                     ->latest()
                     ->limit(10)
             )
             ->columns([
-                Tables\Columns\TextColumn::make('subject.name')
-                    ->label('Предмет')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Назва')
                     ->searchable()
                     ->sortable(),
                     
-                Tables\Columns\TextColumn::make('teacher.name')
-                    ->label('Викладач')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('calendar.name')
+                    ->label('Календар')
                     ->sortable(),
                     
-                Tables\Columns\TextColumn::make('group.name')
-                    ->label('Група')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'warning',
+                        'published' => 'success',
+                        'archived' => 'gray',
+                        default => 'gray',
+                    }),
+                    
+                Tables\Columns\TextColumn::make('creator.name')
+                    ->label('Створив')
                     ->sortable(),
                     
-                Tables\Columns\TextColumn::make('day_of_week')
-                    ->label('День')
-                    ->formatStateUsing(function (int $state): string {
-                        $days = [
-                            1 => 'Пн',
-                            2 => 'Вт', 
-                            3 => 'Ср',
-                            4 => 'Чт',
-                            5 => 'Пт',
-                            6 => 'Сб',
-                            7 => 'Нд'
-                        ];
-                        return $days[$state] ?? $state;
-                    })
-                    ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('time_slot')
-                    ->label('Час')
-                    ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('classroom')
-                    ->label('Аудиторія')
-                    ->placeholder('Не вказано'),
-                    
-                Tables\Columns\TextColumn::make('week_number')
-                    ->label('Тиждень')
+                Tables\Columns\TextColumn::make('assignments_count')
+                    ->counts('assignments')
+                    ->label('Занять')
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Додано')
+                    ->label('Створено')
                     ->dateTime('d.m.Y H:i')
                     ->sortable(),
             ])

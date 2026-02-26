@@ -2,9 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Course;
+use App\Models\Activity;
 use App\Models\Group;
-use App\Models\Schedule;
+use App\Models\Room;
+use App\Models\ScheduleAssignment;
 use App\Models\Subject;
 use App\Models\Teacher;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -17,29 +18,29 @@ class StatsOverviewWidget extends BaseWidget
     protected function getStats(): array
     {
         $totalGroups = Group::count();
-        $totalSubjects = Subject::count();
         $totalTeachers = Teacher::count();
-        $totalSchedules = Schedule::count();
+        $totalActivities = Activity::count();
+        $totalRooms = Room::where('active', true)->count();
         
         return [
-            Stat::make('Всього груп', $totalGroups)
-                ->description('Груп, що навчаються')
+            Stat::make('Групи', $totalGroups)
+                ->description('Активних груп')
                 ->descriptionIcon('heroicon-m-users')
                 ->color('info'),
                 
-            Stat::make('Всього предметів', $totalSubjects)
-                ->description('Дисциплін у навчальному плані')
-                ->descriptionIcon('heroicon-m-book-open')
-                ->color('warning'),
-                
-            Stat::make('Всього викладачів', $totalTeachers)
+            Stat::make('Викладачі', $totalTeachers)
                 ->description('Викладачів у системі')
                 ->descriptionIcon('heroicon-m-user-group')
                 ->color('primary'),
                 
-            Stat::make('Всього занять', $totalSchedules)
-                ->description('Запланованих занять')
-                ->descriptionIcon('heroicon-m-calendar-days')
+            Stat::make('Активності', $totalActivities)
+                ->description('Занять для розкладу')
+                ->descriptionIcon('heroicon-m-book-open')
+                ->color('warning'),
+                
+            Stat::make('Аудиторії', $totalRooms)
+                ->description('Активних аудиторій')
+                ->descriptionIcon('heroicon-m-building-office')
                 ->color('success'),
         ];
     }

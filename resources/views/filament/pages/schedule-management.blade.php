@@ -247,14 +247,13 @@
                                                      x-transition:enter-end="opacity-100 scale-100"
                                                      class="p-2 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                                                      :class="getSubjectClass(getScheduleItem(dateInfo.date, timeSlot)?.subject_type)"
-                                                     :title="'Викладач: ' + getScheduleItem(dateInfo.date, timeSlot)?.teacher + (getScheduleItem(dateInfo.date, timeSlot)?.classroom ? '\\nАудиторія: ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom : '')"
+                                                     :title="'Викладач: ' + getScheduleItem(dateInfo.date, timeSlot)?.teacher + (getScheduleItem(dateInfo.date, timeSlot)?.classroom ? '\nАудиторія: ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom : '')"
                                                      @click="openEditModal(getScheduleItem(dateInfo.date, timeSlot)?.id, getScheduleItem(dateInfo.date, timeSlot)?.subject, getScheduleItem(dateInfo.date, timeSlot)?.teacher, getScheduleItem(dateInfo.date, timeSlot)?.classroom || '', dateInfo.date, timeSlot, getScheduleItem(dateInfo.date, timeSlot)?.week_number, dateInfo.date)">
                                                     <div class="font-medium truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.subject"></div>
                                                     <div class="truncate" x-text="getScheduleItem(dateInfo.date, timeSlot)?.teacher"></div>
                                                     <div x-show="getScheduleItem(dateInfo.date, timeSlot)?.classroom" 
                                                          class="truncate" 
                                                          x-text="'Ауд. ' + getScheduleItem(dateInfo.date, timeSlot)?.classroom"></div>
-                                                    <div class="text-xs opacity-50 mt-1">Клік для редагування</div>
                                                 </div>
                                                 <div x-show="!getScheduleItem(dateInfo.date, timeSlot)" 
                                                      class="p-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 text-center cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"

@@ -2,13 +2,13 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Schedule;
+use App\Models\Activity;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class SubjectTypeChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Розподіл занять по типах';
+    protected static ?string $heading = 'Розподіл активностей по типах';
     
     protected static ?int $sort = 5;
     
@@ -16,9 +16,8 @@ class SubjectTypeChartWidget extends ChartWidget
     
     protected function getData(): array
     {
-        $typeData = Schedule::join('subjects', 'schedules.subject_id', '=', 'subjects.id')
-            ->select('subjects.type', DB::raw('count(*) as count'))
-            ->groupBy('subjects.type')
+        $typeData = Activity::select('activity_type', DB::raw('count(*) as count'))
+            ->groupBy('activity_type')
             ->get();
         
         $labels = [];
@@ -30,6 +29,7 @@ class SubjectTypeChartWidget extends ChartWidget
             'practice' => 'Практичні',
             'lab' => 'Лабораторні',
             'seminar' => 'Семінари',
+            'pc' => 'Комп\'ютерні',
         ];
         
         $typeColors = [
@@ -37,22 +37,30 @@ class SubjectTypeChartWidget extends ChartWidget
             'practice' => ['rgba(16, 185, 129, 0.8)', 'rgba(16, 185, 129, 1)'],
             'lab' => ['rgba(245, 158, 11, 0.8)', 'rgba(245, 158, 11, 1)'],
             'seminar' => ['rgba(239, 68, 68, 0.8)', 'rgba(239, 68, 68, 1)'],
+            'pc' => ['rgba(139, 92, 246, 0.8)', 'rgba(139, 92, 246, 1)'],
         ];
         
         foreach ($typeData as $item) {
-            $typeName = $typeNames[$item->type] ?? ucfirst($item->type);
+            $typeName = $typeNames[$item->activity_type] ?? ucfirst($item->activity_type);
             $labels[] = $typeName;
             $data[] = $item->count;
             
-            $colorSet = $typeColors[$item->type] ?? ['rgba(156, 163, 175, 0.8)', 'rgba(156, 163, 175, 1)'];
+            $colorSet = $typeColors[$item->activity_type] ?? ['rgba(156, 163, 175, 0.8)', 'rgba(156, 163, 175, 1)'];
             $colors['background'][] = $colorSet[0];
             $colors['border'][] = $colorSet[1];
+        }
+        
+        if (empty($data)) {
+            return [
+                'datasets' => [['label' => 'Кількість', 'data' => [0], 'backgroundColor' => ['rgba(156, 163, 175, 0.5)']]],
+                'labels' => ['Немає даних'],
+            ];
         }
         
         return [
             'datasets' => [
                 [
-                    'label' => 'Кількість занять',
+                    'label' => 'Кількість активностей',
                     'data' => $data,
                     'backgroundColor' => $colors['background'],
                     'borderColor' => $colors['border'],

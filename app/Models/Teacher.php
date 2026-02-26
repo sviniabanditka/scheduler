@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\TenantScope;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Validation\Rule;
 
 class Teacher extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScope;
 
     protected $fillable = [
+        'tenant_id',
         'name',
         'email',
         'phone',
@@ -21,34 +26,39 @@ class Teacher extends Model
         'email_verified_at' => 'datetime',
     ];
 
-    /**
-     * Get the subjects taught by this teacher.
-     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function subjects(): HasMany
     {
         return $this->hasMany(Subject::class);
     }
 
-    /**
-     * Get the schedules for this teacher.
-     */
-    public function schedules(): HasMany
+    public function activities(): BelongsToMany
     {
-        return $this->hasMany(Schedule::class);
+        return $this->belongsToMany(Activity::class, 'activity_teachers')
+            ->withPivot('tenant_id')
+            ->withTimestamps();
     }
 
-    /**
-     * Validation rules for teacher.
-     */
+    public function unavailabilities(): HasMany
+    {
+        return $this->hasMany(TeacherUnavailability::class);
+    }
+
     public static function rules($id = null): array
     {
+        $tenantId = app('tenant')?->id;
+        
         return [
             'name' => 'required|string|max:255',
             'email' => [
                 'required',
                 'email',
                 'max:255',
-                Rule::unique('teachers')->ignore($id),
+                Rule::unique('teachers')->where('tenant_id', $tenantId)->ignore($id),
             ],
             'phone' => 'nullable|string|max:20',
         ];

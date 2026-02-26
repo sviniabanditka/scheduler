@@ -2,29 +2,34 @@
 
 namespace App\Providers;
 
+use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\CalendarResource;
+use App\Filament\Resources\RoomResource;
+use App\Filament\Resources\TenantResource;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Illuminate\Support\ServiceProvider;
 
 class FilamentServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap services.
-     */
     public function boot(): void
     {
         Filament::serving(function () {
+            Filament::registerResources([
+                TenantResource::class,
+                RoomResource::class,
+                CalendarResource::class,
+                ActivityResource::class,
+            ]);
+
             Filament::registerNavigationGroups([
                 NavigationGroup::make()
-                    ->label('Управління даними')
+                    ->label('SaaS')
                     ->collapsed(false),
                 
                 NavigationGroup::make()

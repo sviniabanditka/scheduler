@@ -80,9 +80,9 @@ class TeacherResource extends Resource
                     ->badge()
                     ->color('success'),
                 
-                Tables\Columns\TextColumn::make('schedules_count')
+                Tables\Columns\TextColumn::make('activities_count')
                     ->label('Занять')
-                    ->counts('schedules')
+                    ->counts('activities')
                     ->badge()
                     ->color('info'),
                 
@@ -97,9 +97,9 @@ class TeacherResource extends Resource
                     ->label('З предметами')
                     ->query(fn (Builder $query): Builder => $query->has('subjects')),
                 
-                Tables\Filters\Filter::make('has_schedules')
-                    ->label('З розкладом')
-                    ->query(fn (Builder $query): Builder => $query->has('schedules')),
+                Tables\Filters\Filter::make('has_activities')
+                    ->label('З заняттями')
+                    ->query(fn (Builder $query): Builder => $query->has('activities')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

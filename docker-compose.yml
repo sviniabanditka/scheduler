@@ -12,11 +12,12 @@ services:
     networks:
       - scheduler
     depends_on:
-      - db
+      - postgres
       - redis
     environment:
       - XDEBUG_MODE=develop,debug
       - XDEBUG_CONFIG=client_host=host.docker.internal
+      - DB_CONNECTION=pgsql
 
   nginx:
     image: nginx:alpine
@@ -32,20 +33,18 @@ services:
     depends_on:
       - app
 
-  db:
-    image: mysql:8.0
-    container_name: scheduler_mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: scheduler_postgres
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "3306:3306"
+      - "5432:5432"
     networks:
       - scheduler
 
@@ -60,6 +59,22 @@ services:
     networks:
       - scheduler
 
+  solver:
+    build:
+      context: .
+      dockerfile: solver/Dockerfile
+    container_name: scheduler_solver
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+      - "8081:8081"
+    networks:
+      - scheduler
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=host=postgres user=${DB_USERNAME} password=${DB_PASSWORD} dbname=${DB_DATABASE} port=5432 sslmode=disable
+
   composer:
     image: composer:latest
     container_name: scheduler_composer
@@ -71,7 +86,7 @@ services:
       - scheduler
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:
 
 networks:
