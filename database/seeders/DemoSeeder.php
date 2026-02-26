@@ -7,7 +7,6 @@ use App\Models\Calendar;
 use App\Models\Course;
 use App\Models\Group;
 use App\Models\Room;
-use App\Models\ScheduleAssignment;
 use App\Models\ScheduleVersion;
 use App\Models\SoftWeight;
 use App\Models\Subject;
@@ -16,6 +15,7 @@ use App\Models\Tenant;
 use App\Models\TimeSlot;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class DemoSeeder extends Seeder
@@ -23,7 +23,8 @@ class DemoSeeder extends Seeder
     public function run(): void
     {
         // ───────────────────────────────────────
-        // UNIVERSITY 1: КПІ
+        // UNIVERSITY 1: КПІ — Факультет інформатики та обчислювальної техніки
+        // Реалістичний набір: 12 груп, 16 викладачів, ~70 activities
         // ───────────────────────────────────────
         $kpi = $this->createUniversity(
             name: 'КПІ ім. Ігоря Сікорського',
@@ -31,14 +32,30 @@ class DemoSeeder extends Seeder
             ownerName: 'Адмін КПІ',
             ownerEmail: 'admin@kpi.ua',
             teachers: [
+                // Кафедра вищої математики
                 ['name' => 'Іванов Петро Сергійович', 'email' => 'ivanov@kpi.ua', 'phone' => '+380671234567'],
                 ['name' => 'Петренко Олена Миколаївна', 'email' => 'petrenko@kpi.ua', 'phone' => '+380672345678'],
+                // Кафедра фізики
                 ['name' => 'Сидоренко Андрій Вікторович', 'email' => 'sydorenko@kpi.ua', 'phone' => '+380673456789'],
                 ['name' => 'Коваленко Марія Іванівна', 'email' => 'kovalenko@kpi.ua', 'phone' => '+380674567890'],
+                // Кафедра програмування
                 ['name' => 'Шевченко Дмитро Олегович', 'email' => 'shevchenko@kpi.ua', 'phone' => '+380675678901'],
                 ['name' => 'Бондаренко Наталія Петрівна', 'email' => 'bondarenko@kpi.ua', 'phone' => '+380676789012'],
                 ['name' => 'Мороз Віктор Анатолійович', 'email' => 'moroz@kpi.ua', 'phone' => '+380677890123'],
+                // Кафедра системного аналізу
                 ['name' => 'Ткаченко Ірина Юріївна', 'email' => 'tkachenko@kpi.ua', 'phone' => '+380678901234'],
+                ['name' => 'Левченко Сергій Павлович', 'email' => 'levchenko@kpi.ua', 'phone' => '+380679012345'],
+                // Кафедра комп'ютерних мереж
+                ['name' => 'Кравченко Олександр Ігорович', 'email' => 'kravchenko@kpi.ua', 'phone' => '+380670123456'],
+                ['name' => 'Мельник Юрій Олександрович', 'email' => 'melnyk@kpi.ua', 'phone' => '+380671122334'],
+                // Кафедра ШІ та БД
+                ['name' => 'Козлов Артем Дмитрович', 'email' => 'kozlov@kpi.ua', 'phone' => '+380672233445'],
+                ['name' => 'Пономаренко Тетяна Сергіївна', 'email' => 'ponomarenko@kpi.ua', 'phone' => '+380673344556'],
+                // Кафедра гуманітарних
+                ['name' => 'Олійник Ганна Володимирівна', 'email' => 'oliynyk@kpi.ua', 'phone' => '+380674455667'],
+                ['name' => 'Романенко Ігор Михайлович', 'email' => 'romanenko@kpi.ua', 'phone' => '+380675566778'],
+                // Кафедра фізвиховання
+                ['name' => 'Савченко Вадим Борисович', 'email' => 'savchenko@kpi.ua', 'phone' => '+380676677889'],
             ],
             courses: [
                 ['name' => '1 курс', 'number' => 1],
@@ -47,34 +64,43 @@ class DemoSeeder extends Seeder
                 ['name' => '4 курс', 'number' => 4],
             ],
             groups: [
+                // 1 курс — 3 групи
                 ['name' => 'КН-11', 'course_number' => 1, 'code' => 'КН-11', 'size' => 25],
                 ['name' => 'КН-12', 'course_number' => 1, 'code' => 'КН-12', 'size' => 28],
+                ['name' => 'КН-13', 'course_number' => 1, 'code' => 'КН-13', 'size' => 26],
+                // 2 курс — 3 групи
                 ['name' => 'КН-21', 'course_number' => 2, 'code' => 'КН-21', 'size' => 22],
                 ['name' => 'КН-22', 'course_number' => 2, 'code' => 'КН-22', 'size' => 24],
+                ['name' => 'КН-23', 'course_number' => 2, 'code' => 'КН-23', 'size' => 20],
+                // 3 курс — 3 групи
                 ['name' => 'КН-31', 'course_number' => 3, 'code' => 'КН-31', 'size' => 20],
                 ['name' => 'КН-32', 'course_number' => 3, 'code' => 'КН-32', 'size' => 18],
+                ['name' => 'КН-33', 'course_number' => 3, 'code' => 'КН-33', 'size' => 22],
+                // 4 курс — 3 групи
                 ['name' => 'КН-41', 'course_number' => 4, 'code' => 'КН-41', 'size' => 15],
-            ],
-            subjects: [
-                ['name' => 'Вища математика', 'type' => 'lecture'],
-                ['name' => 'Програмування', 'type' => 'practice'],
-                ['name' => 'Фізика', 'type' => 'lecture'],
-                ['name' => 'Алгоритми та структури даних', 'type' => 'practice'],
-                ['name' => 'Бази даних', 'type' => 'practice'],
-                ['name' => 'Операційні системи', 'type' => 'lecture'],
-                ['name' => 'Комп\'ютерні мережі', 'type' => 'lecture'],
-                ['name' => 'Штучний інтелект', 'type' => 'practice'],
-                ['name' => 'Веб-розробка', 'type' => 'practice'],
-                ['name' => 'Дискретна математика', 'type' => 'lecture'],
+                ['name' => 'КН-42', 'course_number' => 4, 'code' => 'КН-42', 'size' => 16],
+                ['name' => 'КН-43', 'course_number' => 4, 'code' => 'КН-43', 'size' => 14],
             ],
             rooms: [
+                // Лекційні
                 ['code' => '101', 'title' => 'Велика лекційна аудиторія', 'capacity' => 120, 'room_type' => 'lecture'],
                 ['code' => '102', 'title' => 'Лекційна аудиторія 2', 'capacity' => 80, 'room_type' => 'lecture'],
+                ['code' => '103', 'title' => 'Лекційна аудиторія 3', 'capacity' => 60, 'room_type' => 'lecture'],
+                ['code' => '104', 'title' => 'Лекційна аудиторія 4', 'capacity' => 50, 'room_type' => 'lecture'],
+                // Комп'ютерні лабораторії
                 ['code' => '201', 'title' => 'Комп\'ютерна лабораторія 1', 'capacity' => 30, 'room_type' => 'pc'],
                 ['code' => '202', 'title' => 'Комп\'ютерна лабораторія 2', 'capacity' => 25, 'room_type' => 'pc'],
+                ['code' => '203', 'title' => 'Комп\'ютерна лабораторія 3', 'capacity' => 28, 'room_type' => 'pc'],
+                // Семінарні
                 ['code' => '301', 'title' => 'Семінарна аудиторія 1', 'capacity' => 35, 'room_type' => 'seminar'],
                 ['code' => '302', 'title' => 'Семінарна аудиторія 2', 'capacity' => 30, 'room_type' => 'seminar'],
-                ['code' => '401', 'title' => 'Фізична лабораторія', 'capacity' => 20, 'room_type' => 'lab'],
+                ['code' => '303', 'title' => 'Семінарна аудиторія 3', 'capacity' => 28, 'room_type' => 'seminar'],
+                ['code' => '304', 'title' => 'Семінарна аудиторія 4', 'capacity' => 25, 'room_type' => 'seminar'],
+                // Лабораторії (фізика тощо)
+                ['code' => '401', 'title' => 'Фізична лабораторія 1', 'capacity' => 20, 'room_type' => 'lab'],
+                ['code' => '402', 'title' => 'Фізична лабораторія 2', 'capacity' => 18, 'room_type' => 'lab'],
+                // Спортзал
+                ['code' => 'СЗ-1', 'title' => 'Спортивний зал', 'capacity' => 50, 'room_type' => 'gym'],
             ],
             calendarName: 'Осінній семестр 2026/2027',
             calendarStart: '2026-09-01',
@@ -82,7 +108,7 @@ class DemoSeeder extends Seeder
         );
 
         // ───────────────────────────────────────
-        // UNIVERSITY 2: ЛНУ
+        // UNIVERSITY 2: ЛНУ (менший для порівняння)
         // ───────────────────────────────────────
         $lnu = $this->createUniversity(
             name: 'ЛНУ ім. Івана Франка',
@@ -109,16 +135,6 @@ class DemoSeeder extends Seeder
                 ['name' => 'ПМІ-31', 'course_number' => 3, 'code' => 'ПМІ-31', 'size' => 22],
                 ['name' => 'ПМІ-32', 'course_number' => 3, 'code' => 'ПМІ-32', 'size' => 20],
             ],
-            subjects: [
-                ['name' => 'Математичний аналіз', 'type' => 'lecture'],
-                ['name' => 'Лінійна алгебра', 'type' => 'lecture'],
-                ['name' => 'Основи програмування', 'type' => 'practice'],
-                ['name' => 'Теорія ймовірностей', 'type' => 'lecture'],
-                ['name' => 'Чисельні методи', 'type' => 'practice'],
-                ['name' => 'Системний аналіз', 'type' => 'lecture'],
-                ['name' => 'Моделювання процесів', 'type' => 'practice'],
-                ['name' => 'Англійська мова', 'type' => 'practice'],
-            ],
             rooms: [
                 ['code' => 'A101', 'title' => 'Лекційний зал А', 'capacity' => 100, 'room_type' => 'lecture'],
                 ['code' => 'A102', 'title' => 'Лекційний зал Б', 'capacity' => 60, 'room_type' => 'lecture'],
@@ -132,7 +148,7 @@ class DemoSeeder extends Seeder
         );
 
         $this->command->info('✅ Демо-дата створена: 2 університети з повними наборами даних');
-        $this->command->info('   КПІ: admin@kpi.ua / password');
+        $this->command->info('   КПІ: admin@kpi.ua / password (12 груп, 16 викладачів, ~70 activities)');
         $this->command->info('   ЛНУ: admin@lnu.ua / password');
     }
 
@@ -144,7 +160,6 @@ class DemoSeeder extends Seeder
         array $teachers,
         array $courses,
         array $groups,
-        array $subjects,
         array $rooms,
         string $calendarName,
         string $calendarStart,
@@ -190,14 +205,17 @@ class DemoSeeder extends Seeder
 
         // 5. Create Groups
         $createdGroups = [];
+        $groupsByCourse = [];
         foreach ($groups as $g) {
             $courseNumber = $g['course_number'];
             unset($g['course_number']);
-            $createdGroups[] = Group::withoutGlobalScopes()->create(array_merge($g, [
+            $group = Group::withoutGlobalScopes()->create(array_merge($g, [
                 'tenant_id' => $tid,
                 'course_id' => $createdCourses[$courseNumber]->id,
                 'active' => true,
             ]));
+            $createdGroups[] = $group;
+            $groupsByCourse[$courseNumber][] = $group;
         }
 
         // 6. Create Rooms
@@ -209,21 +227,21 @@ class DemoSeeder extends Seeder
             ]));
         }
 
-        // 7. Create Calendar + TimeSlots
+        // 7. Create Calendar + TimeSlots (with parity)
         $calendar = Calendar::withoutGlobalScopes()->create([
             'tenant_id' => $tid,
             'name' => $calendarName,
             'start_date' => $calendarStart,
             'end_date' => $calendarEnd,
             'weeks' => 16,
-            'parity_enabled' => false,
+            'parity_enabled' => true,
             'days_per_week' => 6,
             'slots_per_day' => 6,
             'slot_duration_minutes' => 90,
             'break_duration_minutes' => 10,
         ]);
 
-        // Create time slots (6 days × 6 slots)
+        // Create time slots (6 days × 6 slots × 3 parities)
         $slotTimes = [
             1 => ['08:30', '10:05'],
             2 => ['10:15', '11:50'],
@@ -235,105 +253,172 @@ class DemoSeeder extends Seeder
 
         foreach (range(1, 6) as $day) {
             foreach ($slotTimes as $slotIdx => [$start, $end]) {
-                TimeSlot::withoutGlobalScopes()->create([
-                    'tenant_id' => $tid,
-                    'calendar_id' => $calendar->id,
-                    'day_of_week' => $day,
-                    'slot_index' => $slotIdx,
-                    'start_time' => $start,
-                    'end_time' => $end,
-                    'parity' => 'both',
-                    'enabled' => true,
-                ]);
-            }
-        }
-
-        // 8. Create Subjects (assign teachers round-robin)
-        $createdSubjects = [];
-        foreach ($subjects as $i => $s) {
-            $teacher = $createdTeachers[$i % count($createdTeachers)];
-            $createdSubjects[] = Subject::withoutGlobalScopes()->create(array_merge($s, [
-                'tenant_id' => $tid,
-                'teacher_id' => $teacher->id,
-            ]));
-        }
-
-        // 9. Create Activities (each subject → 1-2 activities for first groups)
-        $createdActivities = [];
-        $activityTypes = ['lecture', 'practice', 'lab', 'seminar'];
-
-        foreach ($createdSubjects as $si => $subject) {
-            // Lecture activity
-            $activity = Activity::withoutGlobalScopes()->create([
-                'tenant_id' => $tid,
-                'subject_id' => $subject->id,
-                'calendar_id' => $calendar->id,
-                'title' => $subject->name . ' (Лекція)',
-                'activity_type' => 'lecture',
-                'duration_slots' => 1,
-                'required_slots_per_period' => 1,
-            ]);
-
-            // Assign groups (first 2 groups get this activity)
-            $assignedGroups = array_slice($createdGroups, 0, min(2, count($createdGroups)));
-            foreach ($assignedGroups as $group) {
-                \DB::table('activity_groups')->insert([
-                    'tenant_id' => $tid,
-                    'activity_id' => $activity->id,
-                    'group_id' => $group->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            // Assign teacher
-            $teacher = $createdTeachers[$si % count($createdTeachers)];
-            \DB::table('activity_teachers')->insert([
-                'tenant_id' => $tid,
-                'activity_id' => $activity->id,
-                'teacher_id' => $teacher->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $createdActivities[] = $activity;
-
-            // Practice activity (for every other subject)
-            if ($si % 2 === 0) {
-                $practiceActivity = Activity::withoutGlobalScopes()->create([
-                    'tenant_id' => $tid,
-                    'subject_id' => $subject->id,
-                    'calendar_id' => $calendar->id,
-                    'title' => $subject->name . ' (Практика)',
-                    'activity_type' => 'practice',
-                    'duration_slots' => 1,
-                    'required_slots_per_period' => 1,
-                ]);
-
-                // Each group separately
-                foreach (array_slice($createdGroups, 0, min(3, count($createdGroups))) as $group) {
-                    \DB::table('activity_groups')->insert([
+                foreach (['both', 'num', 'den'] as $parity) {
+                    TimeSlot::withoutGlobalScopes()->create([
                         'tenant_id' => $tid,
-                        'activity_id' => $practiceActivity->id,
-                        'group_id' => $group->id,
+                        'calendar_id' => $calendar->id,
+                        'day_of_week' => $day,
+                        'slot_index' => $slotIdx,
+                        'start_time' => $start,
+                        'end_time' => $end,
+                        'parity' => $parity,
+                        'enabled' => true,
+                    ]);
+                }
+            }
+        }
+
+        // 8. Create Subjects & Activities
+        // Realistic curriculum per course
+        $curriculum = $this->getCurriculum();
+
+        $createdSubjects = [];
+        $createdActivities = [];
+        $teacherIdx = 0;
+
+        foreach ($curriculum as $courseNum => $courseSubjects) {
+            if (!isset($groupsByCourse[$courseNum])) {
+                continue;
+            }
+            $courseGroups = $groupsByCourse[$courseNum];
+
+            foreach ($courseSubjects as $subjectData) {
+                // Create subject
+                $subject = Subject::withoutGlobalScopes()->create([
+                    'name' => $subjectData['name'],
+                    'type' => $subjectData['types'][0] ?? 'lecture',
+                    'tenant_id' => $tid,
+                    'teacher_id' => $createdTeachers[$teacherIdx % count($createdTeachers)]->id,
+                ]);
+                $createdSubjects[] = $subject;
+
+                // Assign lecture teacher
+                $lectureTeacher = $createdTeachers[$teacherIdx % count($createdTeachers)];
+                $practiceTeacher = $createdTeachers[($teacherIdx + 1) % count($createdTeachers)];
+                $teacherIdx++;
+
+                // Create lecture activity (shared by all course groups)
+                if (in_array('lecture', $subjectData['types'])) {
+                    $activity = Activity::withoutGlobalScopes()->create([
+                        'tenant_id' => $tid,
+                        'subject_id' => $subject->id,
+                        'calendar_id' => $calendar->id,
+                        'title' => $subject->name . ' (Лекція)',
+                        'activity_type' => 'lecture',
+                        'duration_slots' => 1,
+                        'required_slots_per_period' => $subjectData['lecture_slots'] ?? 1,
+                    ]);
+
+                    // All groups in the course attend the lecture
+                    foreach ($courseGroups as $group) {
+                        DB::table('activity_groups')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'group_id' => $group->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    DB::table('activity_teachers')->insert([
+                        'tenant_id' => $tid,
+                        'activity_id' => $activity->id,
+                        'teacher_id' => $lectureTeacher->id,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+
+                    // Assign room type
+                    DB::table('activity_room_types')->insert([
+                        'tenant_id' => $tid,
+                        'activity_id' => $activity->id,
+                        'room_type' => 'lecture',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $createdActivities[] = $activity;
                 }
 
-                \DB::table('activity_teachers')->insert([
-                    'tenant_id' => $tid,
-                    'activity_id' => $practiceActivity->id,
-                    'teacher_id' => $teacher->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                // Create practice/lab per group
+                foreach ($courseGroups as $group) {
+                    if (in_array('practice', $subjectData['types'])) {
+                        $activity = Activity::withoutGlobalScopes()->create([
+                            'tenant_id' => $tid,
+                            'subject_id' => $subject->id,
+                            'calendar_id' => $calendar->id,
+                            'title' => $subject->name . ' (Практика, ' . $group->code . ')',
+                            'activity_type' => 'practice',
+                            'duration_slots' => 1,
+                            'required_slots_per_period' => $subjectData['practice_slots'] ?? 1,
+                        ]);
 
-                $createdActivities[] = $practiceActivity;
+                        DB::table('activity_groups')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'group_id' => $group->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        DB::table('activity_teachers')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'teacher_id' => $practiceTeacher->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        DB::table('activity_room_types')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'room_type' => 'seminar',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $createdActivities[] = $activity;
+                    }
+
+                    if (in_array('lab', $subjectData['types'])) {
+                        $roomType = $subjectData['lab_room'] ?? 'pc';
+                        $activity = Activity::withoutGlobalScopes()->create([
+                            'tenant_id' => $tid,
+                            'subject_id' => $subject->id,
+                            'calendar_id' => $calendar->id,
+                            'title' => $subject->name . ' (Лабораторна, ' . $group->code . ')',
+                            'activity_type' => 'lab',
+                            'duration_slots' => 1,
+                            'required_slots_per_period' => $subjectData['lab_slots'] ?? 1,
+                        ]);
+
+                        DB::table('activity_groups')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'group_id' => $group->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        DB::table('activity_teachers')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'teacher_id' => $practiceTeacher->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        DB::table('activity_room_types')->insert([
+                            'tenant_id' => $tid,
+                            'activity_id' => $activity->id,
+                            'room_type' => $roomType,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $createdActivities[] = $activity;
+                    }
+                }
             }
         }
 
-        // 10. Create SoftWeights
+        // 9. Create SoftWeights
         SoftWeight::withoutGlobalScopes()->create([
             'tenant_id' => $tid,
             'w_windows' => 10,
@@ -341,53 +426,174 @@ class DemoSeeder extends Seeder
             'w_balance' => 2,
         ]);
 
-        // 11. Create a ScheduleVersion + some assignments
-        $version = ScheduleVersion::withoutGlobalScopes()->create([
-            'tenant_id' => $tid,
-            'calendar_id' => $calendar->id,
-            'name' => 'Розклад v1 (демо)',
-            'status' => 'published',
-            'created_by' => $owner->id,
-            'version_number' => 1,
-            'random_seed' => 42,
-            'generation_params' => ['weights' => ['w_windows' => 10, 'w_prefs' => 5, 'w_balance' => 2]],
-            'published_at' => now(),
-        ]);
+        // 10. Create Teacher Unavailabilities (some teachers not available on certain days/slots)
+        $this->createUnavailabilities($tid, $calendar->id, $createdTeachers);
 
-        // Create sample schedule assignments
-        $roomsByType = collect($createdRooms)->groupBy('room_type');
-        $lectureRooms = $roomsByType->get('lecture', collect())->values();
-        $practiceRooms = $roomsByType->get('pc', $roomsByType->get('seminar', collect()))->values();
-        $allRooms = collect($createdRooms)->values();
+        // 11. Create Teacher Preferences
+        $this->createPreferences($tid, $createdTeachers);
 
-        $daySlot = 1; // start from Monday
-        $slotIdx = 1;
+        // 12. Create Preference Rules
+        $this->createPreferenceRules($tid, $createdTeachers);
 
-        foreach ($createdActivities as $activity) {
-            $room = $activity->activity_type === 'lecture'
-                ? ($lectureRooms->isNotEmpty() ? $lectureRooms[$slotIdx % $lectureRooms->count()] : $allRooms[0])
-                : ($practiceRooms->isNotEmpty() ? $practiceRooms[$slotIdx % $practiceRooms->count()] : $allRooms[0]);
+        return compact('tenant', 'owner', 'createdTeachers', 'createdCourses', 'createdGroups', 'calendar');
+    }
 
-            ScheduleAssignment::withoutGlobalScopes()->create([
+    /**
+     * Realistic curriculum: subjects with lecture, practice, and lab components per course.
+     */
+    private function getCurriculum(): array
+    {
+        return [
+            // 1 course — fundamental subjects
+            1 => [
+                ['name' => 'Вища математика', 'types' => ['lecture', 'practice'], 'lecture_slots' => 2, 'practice_slots' => 1],
+                ['name' => 'Програмування (С++)', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 2, 'lab_room' => 'pc'],
+                ['name' => 'Фізика', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'lab'],
+                ['name' => 'Дискретна математика', 'types' => ['lecture', 'practice'], 'lecture_slots' => 1, 'practice_slots' => 1],
+                ['name' => 'Англійська мова', 'types' => ['practice'], 'practice_slots' => 2],
+                ['name' => 'Фізичне виховання', 'types' => ['practice'], 'practice_slots' => 1],
+                ['name' => 'Історія України', 'types' => ['lecture'], 'lecture_slots' => 1],
+            ],
+            // 2 course — core CS subjects
+            2 => [
+                ['name' => 'Алгоритми та структури даних', 'types' => ['lecture', 'practice', 'lab'], 'lecture_slots' => 1, 'practice_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'ООП (Java)', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 2, 'lab_room' => 'pc'],
+                ['name' => 'Бази даних', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Теорія ймовірностей', 'types' => ['lecture', 'practice'], 'lecture_slots' => 1, 'practice_slots' => 1],
+                ['name' => 'Операційні системи', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Англійська мова (проф.)', 'types' => ['practice'], 'practice_slots' => 1],
+            ],
+            // 3 course — advanced subjects
+            3 => [
+                ['name' => 'Комп\'ютерні мережі', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Штучний інтелект', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Веб-розробка', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 2, 'lab_room' => 'pc'],
+                ['name' => 'Чисельні методи', 'types' => ['lecture', 'practice'], 'lecture_slots' => 1, 'practice_slots' => 1],
+                ['name' => 'Системне програмування', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Проєктування ПЗ', 'types' => ['lecture', 'practice'], 'lecture_slots' => 1, 'practice_slots' => 1],
+            ],
+            // 4 course — specialization
+            4 => [
+                ['name' => 'Розподілені системи', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Машинне навчання', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 2, 'lab_room' => 'pc'],
+                ['name' => 'Кібербезпека', 'types' => ['lecture', 'practice'], 'lecture_slots' => 1, 'practice_slots' => 1],
+                ['name' => 'DevOps', 'types' => ['lecture', 'lab'], 'lecture_slots' => 1, 'lab_slots' => 1, 'lab_room' => 'pc'],
+                ['name' => 'Дипломний проєкт', 'types' => ['practice'], 'practice_slots' => 2],
+            ],
+        ];
+    }
+
+    /**
+     * Create teacher unavailabilities — certain days/slots blocked.
+     */
+    private function createUnavailabilities(string $tid, int $calendarId, array $teachers): void
+    {
+        $unavailabilities = [
+            // Teacher 0: not available on Saturdays
+            [0, 6, 1], [0, 6, 2], [0, 6, 3], [0, 6, 4], [0, 6, 5], [0, 6, 6],
+            // Teacher 1: not available Monday mornings (slots 1-2)
+            [1, 1, 1], [1, 1, 2],
+            // Teacher 2: not available Wednesday afternoons (slots 4-6)
+            [2, 3, 4], [2, 3, 5], [2, 3, 6],
+            // Teacher 3: not available Fridays
+            [3, 5, 1], [3, 5, 2], [3, 5, 3], [3, 5, 4], [3, 5, 5], [3, 5, 6],
+            // Teacher 5: not available evenings (slot 6 every day)
+            [5, 1, 6], [5, 2, 6], [5, 3, 6], [5, 4, 6], [5, 5, 6],
+            // Teacher 7: not available Thursday mornings
+            [7, 4, 1], [7, 4, 2],
+            // Teacher 9: not available Tuesday
+            [9, 2, 1], [9, 2, 2], [9, 2, 3], [9, 2, 4], [9, 2, 5], [9, 2, 6],
+        ];
+
+        foreach ($unavailabilities as [$teacherIdx, $day, $slot]) {
+            if (!isset($teachers[$teacherIdx])) continue;
+            DB::table('teacher_unavailability')->insert([
                 'tenant_id' => $tid,
-                'schedule_version_id' => $version->id,
-                'activity_id' => $activity->id,
-                'day_of_week' => $daySlot,
-                'slot_index' => $slotIdx,
+                'teacher_id' => $teachers[$teacherIdx]->id,
+                'calendar_id' => $calendarId,
+                'day_of_week' => $day,
+                'slot_index' => $slot,
                 'parity' => 'both',
-                'room_id' => $room->id,
-                'locked' => false,
-                'source' => 'manual',
+                'reason' => 'Недоступний',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
-
-            $slotIdx++;
-            if ($slotIdx > 5) {
-                $slotIdx = 1;
-                $daySlot++;
-                if ($daySlot > 6) $daySlot = 1;
-            }
         }
+    }
 
-        return compact('tenant', 'owner', 'createdTeachers', 'createdCourses', 'createdGroups', 'calendar', 'version');
+    /**
+     * Create teacher preferences — preferred/avoided time slots.
+     */
+    private function createPreferences(string $tid, array $teachers): void
+    {
+        $prefs = [
+            // Teacher 0 prefers morning (positive weight for slots 1-2)
+            [0, 1, 1, 5], [0, 1, 2, 5], [0, 2, 1, 5], [0, 2, 2, 5],
+            // Teacher 0 avoids evening (negative weight for slots 5-6)
+            [0, 1, 5, -8], [0, 1, 6, -8], [0, 2, 5, -8], [0, 2, 6, -8],
+            // Teacher 2 prefers afternoon
+            [2, 1, 3, 3], [2, 1, 4, 3], [2, 2, 3, 3], [2, 2, 4, 3],
+            // Teacher 4 avoids first slot
+            [4, 1, 1, -10], [4, 2, 1, -10], [4, 3, 1, -10], [4, 4, 1, -10], [4, 5, 1, -10],
+            // Teacher 6 prefers Tuesday and Thursday
+            [6, 2, 2, 4], [6, 2, 3, 4], [6, 4, 2, 4], [6, 4, 3, 4],
+        ];
+
+        foreach ($prefs as [$teacherIdx, $day, $slot, $weight]) {
+            if (!isset($teachers[$teacherIdx])) continue;
+            DB::table('teacher_preferences')->insert([
+                'tenant_id' => $tid,
+                'teacher_id' => $teachers[$teacherIdx]->id,
+                'day_of_week' => $day,
+                'slot_index' => $slot,
+                'parity' => 'both',
+                'weight' => $weight,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Create preference rules (new system) for teachers.
+     */
+    private function createPreferenceRules(string $tid, array $teachers): void
+    {
+        $rules = [
+            // Teacher 0: max 4 hours per day
+            [0, 'max_hours_per_day', ['max_hours' => 4], 8],
+            // Teacher 1: prefers starting no earlier than slot 2
+            [1, 'min_start_slot', ['min_slot' => 2], 6],
+            // Teacher 3: max 3 hours per day
+            [3, 'max_hours_per_day', ['max_hours' => 3], 10],
+            // Teacher 5: prefers to finish by slot 4
+            [5, 'max_end_slot', ['max_slot' => 4], 7],
+            // Teacher 7: prefers Monday slot 3
+            [7, 'preferred_slot', ['day_of_week' => 1, 'slot_index' => 3], 5],
+            // Teacher 8: prefers Wednesday slot 2
+            [8, 'preferred_slot', ['day_of_week' => 3, 'slot_index' => 2], 5],
+            // Teacher 10: max 5 hours per day
+            [10, 'max_hours_per_day', ['max_hours' => 5], 4],
+            // Teacher 11: Saturday unavailable (via rule)
+            [11, 'unavailable_day', ['day_of_week' => 6], 10],
+            // Teacher 12: prefers starting from slot 2
+            [12, 'min_start_slot', ['min_slot' => 2], 5],
+            // Teacher 14: max end slot 5
+            [14, 'max_end_slot', ['max_slot' => 5], 6],
+        ];
+
+        foreach ($rules as [$teacherIdx, $ruleType, $params, $weight]) {
+            if (!isset($teachers[$teacherIdx])) continue;
+            DB::table('teacher_preference_rules')->insert([
+                'tenant_id' => $tid,
+                'teacher_id' => $teachers[$teacherIdx]->id,
+                'rule_type' => $ruleType,
+                'params' => json_encode($params),
+                'weight' => $weight,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

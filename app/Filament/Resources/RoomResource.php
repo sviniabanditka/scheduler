@@ -16,7 +16,15 @@ class RoomResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
 
-    protected static ?string $navigationGroup = 'Schedule';
+    protected static ?string $navigationLabel = 'Аудиторії';
+
+    protected static ?string $modelLabel = 'Аудиторія';
+
+    protected static ?string $pluralModelLabel = 'Аудиторії';
+
+    protected static ?int $navigationSort = 7;
+
+    protected static ?string $navigationGroup = 'Розклад';
 
     public static function canAccess(): bool
     {
@@ -28,22 +36,40 @@ class RoomResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('tenant_id')
+                    ->label('Університет')
                     ->relationship('tenant', 'name')
                     ->required(),
-                Forms\Components\TextInput::make('code')->required()->maxLength(20),
-                Forms\Components\TextInput::make('title')->required()->maxLength(100),
-                Forms\Components\TextInput::make('capacity')->integer()->default(0),
+
+                Forms\Components\TextInput::make('code')
+                    ->label('Код аудиторії')
+                    ->required()
+                    ->maxLength(20),
+
+                Forms\Components\TextInput::make('title')
+                    ->label('Назва')
+                    ->required()
+                    ->maxLength(100),
+
+                Forms\Components\TextInput::make('capacity')
+                    ->label('Місткість')
+                    ->integer()
+                    ->default(0),
+
                 Forms\Components\Select::make('room_type')
+                    ->label('Тип аудиторії')
                     ->options([
-                        'lecture' => 'Lecture',
-                        'lab' => 'Lab',
-                        'seminar' => 'Seminar',
-                        'pc' => 'PC',
-                        'gym' => 'Gym',
-                        'other' => 'Other',
+                        'lecture' => 'Лекційна',
+                        'lab' => 'Лабораторна',
+                        'seminar' => 'Семінарська',
+                        'pc' => 'Комп\'ютерний клас',
+                        'gym' => 'Спортивна',
+                        'other' => 'Інша',
                     ])
                     ->default('lecture'),
-                Forms\Components\Toggle::make('active')->default(true),
+
+                Forms\Components\Toggle::make('active')
+                    ->label('Активна')
+                    ->default(true),
             ]);
     }
 
@@ -51,15 +77,46 @@ class RoomResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('code')->searchable(),
-                Tables\Columns\TextColumn::make('title')->searchable(),
-                Tables\Columns\TextColumn::make('capacity'),
-                Tables\Columns\TextColumn::make('room_type'),
-                Tables\Columns\BooleanColumn::make('active'),
+                Tables\Columns\TextColumn::make('code')
+                    ->label('Код')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Назва')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('capacity')
+                    ->label('Місткість'),
+
+                Tables\Columns\TextColumn::make('room_type')
+                    ->label('Тип')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'lecture' => 'Лекційна',
+                        'lab' => 'Лабораторна',
+                        'seminar' => 'Семінарська',
+                        'pc' => 'Комп\'ютерний клас',
+                        'gym' => 'Спортивна',
+                        'other' => 'Інша',
+                        default => $state,
+                    }),
+
+                Tables\Columns\BooleanColumn::make('active')
+                    ->label('Активна'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('room_type'),
-                Tables\Filters\TernaryFilter::make('active'),
+                Tables\Filters\SelectFilter::make('room_type')
+                    ->label('Тип аудиторії')
+                    ->options([
+                        'lecture' => 'Лекційна',
+                        'lab' => 'Лабораторна',
+                        'seminar' => 'Семінарська',
+                        'pc' => 'Комп\'ютерний клас',
+                        'gym' => 'Спортивна',
+                        'other' => 'Інша',
+                    ]),
+
+                Tables\Filters\TernaryFilter::make('active')
+                    ->label('Активна'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

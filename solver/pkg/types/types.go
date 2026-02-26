@@ -18,9 +18,9 @@ type ScheduleRequest struct {
 }
 
 type Weights struct {
-	WWindows int32 `json:"w_windows"`
-	WPrefs   int32 `json:"w_prefs"`
-	WBalance int32 `json:"w_balance"`
+	WWindows float64 `json:"w_windows"`
+	WPrefs   float64 `json:"w_prefs"`
+	WBalance float64 `json:"w_balance"`
 }
 
 type Scope struct {
@@ -127,11 +127,11 @@ type Teacher struct {
 }
 
 type PreferenceRule struct {
-	TeacherID int64             `json:"teacher_id"`
-	RuleType  string            `json:"rule_type"`
+	TeacherID int64                  `json:"teacher_id"`
+	RuleType  string                 `json:"rule_type"`
 	Params    map[string]interface{} `json:"params"`
-	Weight    int32             `json:"weight"`
-	IsActive  bool              `json:"is_active"`
+	Weight    int32                  `json:"weight"`
+	IsActive  bool                   `json:"is_active"`
 }
 
 type ScheduleInput struct {

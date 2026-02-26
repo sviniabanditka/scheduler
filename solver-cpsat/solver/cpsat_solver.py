@@ -18,7 +18,16 @@ def solve(request: SolveRequest) -> SolveResponse:
     activities = request.activities
     time_slots = request.time_slots
     rooms = request.rooms
-    weights = request.weights
+    raw_weights = request.weights
+
+    # Normalize weights: CP-SAT requires integers, scale floats by ×10
+    class IntWeights:
+        def __init__(self, w):
+            self.w_windows = int(w.w_windows * 10)
+            self.w_prefs = int(w.w_prefs * 10)
+            self.w_balance = int(w.w_balance * 10)
+
+    weights = IntWeights(raw_weights)
 
     if not activities or not time_slots or not rooms:
         return SolveResponse(status="infeasible", assignments=[], solve_time_ms=0)
@@ -140,80 +149,71 @@ def solve(request: SolveRequest) -> SolveResponse:
     if weights.w_windows > 0:
         all_days = sorted(set(s.day_of_week for s in time_slots))
         all_slot_indices = sorted(set(s.slot_index for s in time_slots))
-        slot_si_map: dict[tuple[int, int], int] = {}
-        for si, s in enumerate(time_slots):
-            slot_si_map[(s.day_of_week, s.slot_index)] = si
+        all_parities = sorted(set(s.parity for s in time_slots))
 
-        # Group windows
-        for gid, act_indices in group_activities.items():
-            for day in all_days:
-                # For each consecutive pair of slot indices, detect gaps
-                day_vars: dict[int, list] = defaultdict(list)
-                for ai in act_indices:
-                    for si, ri in valid_combos[ai]:
-                        if time_slots[si].day_of_week == day and (ai, si, ri) in x:
-                            day_vars[time_slots[si].slot_index].append(x[(ai, si, ri)])
+        effective_parities = ['both']
+        if 'num' in all_parities or 'den' in all_parities:
+            effective_parities = ['num', 'den']
 
-                if len(day_vars) < 2:
-                    continue
+        def _add_gap_penalties(entity_activities, prefix):
+            """Add window gap penalties for a set of entity (group/teacher) activities."""
+            for eid, act_indices in entity_activities.items():
+                for day in all_days:
+                    for eff_parity in effective_parities:
+                        # Collect decision vars per slot_index
+                        day_vars: dict[int, list] = defaultdict(list)
+                        for ai in act_indices:
+                            for si, ri in valid_combos[ai]:
+                                s = time_slots[si]
+                                if s.day_of_week != day or (ai, si, ri) not in x:
+                                    continue
+                                if s.parity == eff_parity or s.parity == 'both':
+                                    day_vars[s.slot_index].append(x[(ai, si, ri)])
 
-                # has_class[slot_index] = 1 if any class at this slot
-                has_class = {}
-                for slot_idx in all_slot_indices:
-                    if slot_idx in day_vars:
-                        hc = model.new_bool_var(f"gc_{gid}_{day}_{slot_idx}")
-                        model.add_max_equality(hc, day_vars[slot_idx])
-                        has_class[slot_idx] = hc
+                        if len(day_vars) < 2:
+                            continue
 
-                # Window = has_class before and after but not at this slot
-                for i, slot_idx in enumerate(all_slot_indices):
-                    if slot_idx not in has_class:
-                        # Check if there are classes before and after
-                        before = [has_class[s] for s in all_slot_indices[:i] if s in has_class]
-                        after = [has_class[s] for s in all_slot_indices[i + 1 :] if s in has_class]
-                        if before and after:
-                            gap = model.new_bool_var(f"gap_g_{gid}_{day}_{slot_idx}")
-                            has_before = model.new_bool_var(f"gb_{gid}_{day}_{slot_idx}")
-                            has_after = model.new_bool_var(f"ga_{gid}_{day}_{slot_idx}")
-                            model.add_max_equality(has_before, before)
-                            model.add_max_equality(has_after, after)
-                            # gap = has_before AND has_after
-                            model.add_bool_and([has_before, has_after]).only_enforce_if(gap)
-                            model.add_bool_or([has_before.negated(), has_after.negated()]).only_enforce_if(gap.negated())
+                        # has_class[slot_idx] = bool var, 1 if any class assigned at this slot
+                        has_class = {}
+                        for slot_idx in all_slot_indices:
+                            if slot_idx in day_vars:
+                                hc = model.new_bool_var(f"{prefix}c_{eid}_{day}_{eff_parity}_{slot_idx}")
+                                model.add_max_equality(hc, day_vars[slot_idx])
+                                has_class[slot_idx] = hc
+
+                        # Detect gaps: an empty slot between two occupied slots
+                        # Must handle BOTH cases:
+                        #   a) slot NOT in has_class (no valid combos = always empty)
+                        #   b) slot IN has_class but has_class=0 (solver chose not to place here)
+                        for i, slot_idx in enumerate(all_slot_indices):
+                            # Collect potential occupied slots before and after
+                            before_vars = [has_class[s] for s in all_slot_indices[:i] if s in has_class]
+                            after_vars = [has_class[s] for s in all_slot_indices[i + 1:] if s in has_class]
+
+                            if not before_vars or not after_vars:
+                                continue
+
+                            has_before = model.new_bool_var(f"{prefix}b_{eid}_{day}_{eff_parity}_{slot_idx}")
+                            has_after = model.new_bool_var(f"{prefix}a_{eid}_{day}_{eff_parity}_{slot_idx}")
+                            model.add_max_equality(has_before, before_vars)
+                            model.add_max_equality(has_after, after_vars)
+
+                            gap = model.new_bool_var(f"gap_{prefix}_{eid}_{day}_{eff_parity}_{slot_idx}")
+
+                            if slot_idx not in has_class:
+                                # Case a: always empty, gap iff occupied before AND after
+                                model.add_bool_and([has_before, has_after]).only_enforce_if(gap)
+                                model.add_bool_or([has_before.negated(), has_after.negated()]).only_enforce_if(gap.negated())
+                            else:
+                                # Case b: gap iff NOT occupied here AND occupied before AND after
+                                not_here = has_class[slot_idx].negated()
+                                model.add_bool_and([not_here, has_before, has_after]).only_enforce_if(gap)
+                                model.add_bool_or([has_class[slot_idx], has_before.negated(), has_after.negated()]).only_enforce_if(gap.negated())
+
                             penalties.append(gap * weights.w_windows)
 
-        # Teacher windows (same logic)
-        for tid, act_indices in teacher_activities.items():
-            for day in all_days:
-                day_vars: dict[int, list] = defaultdict(list)
-                for ai in act_indices:
-                    for si, ri in valid_combos[ai]:
-                        if time_slots[si].day_of_week == day and (ai, si, ri) in x:
-                            day_vars[time_slots[si].slot_index].append(x[(ai, si, ri)])
-
-                if len(day_vars) < 2:
-                    continue
-
-                has_class = {}
-                for slot_idx in all_slot_indices:
-                    if slot_idx in day_vars:
-                        hc = model.new_bool_var(f"tc_{tid}_{day}_{slot_idx}")
-                        model.add_max_equality(hc, day_vars[slot_idx])
-                        has_class[slot_idx] = hc
-
-                for i, slot_idx in enumerate(all_slot_indices):
-                    if slot_idx not in has_class:
-                        before = [has_class[s] for s in all_slot_indices[:i] if s in has_class]
-                        after = [has_class[s] for s in all_slot_indices[i + 1 :] if s in has_class]
-                        if before and after:
-                            gap = model.new_bool_var(f"gap_t_{tid}_{day}_{slot_idx}")
-                            has_before = model.new_bool_var(f"tb_{tid}_{day}_{slot_idx}")
-                            has_after = model.new_bool_var(f"ta_{tid}_{day}_{slot_idx}")
-                            model.add_max_equality(has_before, before)
-                            model.add_max_equality(has_after, after)
-                            model.add_bool_and([has_before, has_after]).only_enforce_if(gap)
-                            model.add_bool_or([has_before.negated(), has_after.negated()]).only_enforce_if(gap.negated())
-                            penalties.append(gap * weights.w_windows)
+        _add_gap_penalties(group_activities, "g")
+        _add_gap_penalties(teacher_activities, "t")
 
     # --- Preference penalties (w_prefs) ---
     if weights.w_prefs > 0:
@@ -247,8 +247,10 @@ def solve(request: SolveRequest) -> SolveResponse:
                                 pref_vars.append(x[(ai, si, ri)])
                         # No penalty needed — CP-SAT will naturally use preferred slots
                         # But we can add a small bonus (negative penalty)
-                        for v in pref_vars:
-                            penalties.append(-v * rule.weight * weights.w_prefs // 10)
+                        bonus = -(rule.weight * weights.w_prefs) // 10
+                        if bonus != 0:
+                            for v in pref_vars:
+                                penalties.append(v * bonus)
 
                 elif rule.rule_type == "min_start_slot":
                     min_slot = rule.params.get("min_slot")

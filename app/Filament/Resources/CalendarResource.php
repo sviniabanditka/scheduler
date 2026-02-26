@@ -16,7 +16,15 @@ class CalendarResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
 
-    protected static ?string $navigationGroup = 'Schedule';
+    protected static ?string $navigationLabel = 'Календарі';
+
+    protected static ?string $modelLabel = 'Календар';
+
+    protected static ?string $pluralModelLabel = 'Календарі';
+
+    protected static ?string $navigationGroup = 'Розклад';
+
+    protected static ?int $navigationSort = 6;
 
     public static function canAccess(): bool
     {
@@ -28,17 +36,51 @@ class CalendarResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('tenant_id')
+                    ->label('Університет')
                     ->relationship('tenant', 'name')
                     ->required(),
-                Forms\Components\TextInput::make('name')->required()->maxLength(120),
-                Forms\Components\DatePicker::make('start_date')->required(),
-                Forms\Components\DatePicker::make('end_date')->required(),
-                Forms\Components\TextInput::make('weeks')->integer()->default(16),
-                Forms\Components\TextInput::make('days_per_week')->integer()->default(6),
-                Forms\Components\TextInput::make('slots_per_day')->integer()->default(6),
-                Forms\Components\TextInput::make('slot_duration_minutes')->integer()->default(90),
-                Forms\Components\TextInput::make('break_duration_minutes')->integer()->default(10),
-                Forms\Components\Toggle::make('parity_enabled')->default(false),
+
+                Forms\Components\TextInput::make('name')
+                    ->label('Назва')
+                    ->required()
+                    ->maxLength(120),
+
+                Forms\Components\DatePicker::make('start_date')
+                    ->label('Дата початку')
+                    ->required(),
+
+                Forms\Components\DatePicker::make('end_date')
+                    ->label('Дата закінчення')
+                    ->required(),
+
+                Forms\Components\TextInput::make('weeks')
+                    ->label('Тижнів')
+                    ->integer()
+                    ->default(16),
+
+                Forms\Components\TextInput::make('days_per_week')
+                    ->label('Днів на тиждень')
+                    ->integer()
+                    ->default(6),
+
+                Forms\Components\TextInput::make('slots_per_day')
+                    ->label('Пар на день')
+                    ->integer()
+                    ->default(6),
+
+                Forms\Components\TextInput::make('slot_duration_minutes')
+                    ->label('Тривалість пари (хв)')
+                    ->integer()
+                    ->default(90),
+
+                Forms\Components\TextInput::make('break_duration_minutes')
+                    ->label('Тривалість перерви (хв)')
+                    ->integer()
+                    ->default(10),
+
+                Forms\Components\Toggle::make('parity_enabled')
+                    ->label('Чергування тижнів')
+                    ->default(false),
             ]);
     }
 
@@ -46,11 +88,23 @@ class CalendarResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('start_date')->date(),
-                Tables\Columns\TextColumn::make('end_date')->date(),
-                Tables\Columns\TextColumn::make('weeks'),
-                Tables\Columns\BooleanColumn::make('parity_enabled'),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Назва')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('start_date')
+                    ->label('Дата початку')
+                    ->date(),
+
+                Tables\Columns\TextColumn::make('end_date')
+                    ->label('Дата закінчення')
+                    ->date(),
+
+                Tables\Columns\TextColumn::make('weeks')
+                    ->label('Тижнів'),
+
+                Tables\Columns\BooleanColumn::make('parity_enabled')
+                    ->label('Чергування'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

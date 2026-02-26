@@ -83,6 +83,8 @@ class ScheduleGenerationService
                         'total_violations' => $result['total_violations'] ?? 0,
                         'solve_time_ms' => $result['solve_time_ms'] ?? 0,
                         'assignment_count' => count($result['assignment_ids'] ?? []),
+                        'algorithm' => $algorithm,
+                        'objective_value' => $result['objective_value'] ?? null,
                     ]),
                 ]);
 

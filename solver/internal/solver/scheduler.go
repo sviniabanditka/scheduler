@@ -17,9 +17,9 @@ import (
 )
 
 type Scheduler struct {
-	db          *db.PostgresDB
-	cpsatURL    string
-	httpClient  *http.Client
+	db         *db.PostgresDB
+	cpsatURL   string
+	httpClient *http.Client
 }
 
 func NewScheduler(database *db.PostgresDB, cpsatURL string) *Scheduler {
@@ -77,11 +77,16 @@ func (s *Scheduler) solve(ctx context.Context, req *types.ScheduleRequest) (*typ
 		}, nil
 	}
 
+	log.Printf("Solve request: tenant=%s calendar=%d schedule=%d algorithm='%s' cpsatURL='%s' activities=%d",
+		req.TenantID, req.CalendarID, req.ScheduleID, req.Algorithm, s.cpsatURL, len(input.Activities))
+
 	// Route to appropriate algorithm
 	if req.Algorithm == "cpsat" && s.cpsatURL != "" {
+		log.Printf("Routing to CP-SAT solver")
 		return s.solveCPSAT(ctx, input, req, startTime)
 	}
 
+	log.Printf("Routing to greedy solver")
 	// Default: greedy
 	assignments, violations := s.optimize(input, req)
 
@@ -146,7 +151,7 @@ func (s *Scheduler) solveCPSAT(ctx context.Context, input *types.ScheduleInput, 
 	}
 
 	var cpsatResult struct {
-		Status     string `json:"status"`
+		Status      string `json:"status"`
 		Assignments []struct {
 			ActivityID int64  `json:"activity_id"`
 			DayOfWeek  int32  `json:"day_of_week"`
@@ -154,9 +159,9 @@ func (s *Scheduler) solveCPSAT(ctx context.Context, input *types.ScheduleInput, 
 			Parity     string `json:"parity"`
 			RoomID     int64  `json:"room_id"`
 		} `json:"assignments"`
-		Violations []types.Violation `json:"violations"`
-		ObjectiveValue float64       `json:"objective_value"`
-		SolveTimeMs    int64         `json:"solve_time_ms"`
+		Violations     []types.Violation `json:"violations"`
+		ObjectiveValue float64           `json:"objective_value"`
+		SolveTimeMs    int64             `json:"solve_time_ms"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&cpsatResult); err != nil {
@@ -419,13 +424,6 @@ func (s *Scheduler) checkPreferences(input *types.ScheduleInput, assignments []t
 	for _, pref := range input.Preferences {
 		if pref.Weight == 0 {
 			continue
-		}
-
-		weight := int32(pref.Weight)
-		if pref.Weight < 0 {
-			weight = -weight * weights.WPrefs
-		} else {
-			weight = -weight * weights.WPrefs
 		}
 
 		for _, assignment := range assignments {

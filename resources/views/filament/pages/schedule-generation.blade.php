@@ -27,6 +27,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Назва</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Календар</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Алгоритм</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Занять</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Порушень</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Створено</th>
@@ -56,6 +57,28 @@
                                 default => $version->status,
                             } }}
                                                 </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm">
+                                                @php
+                                                    $params = $version->generation_params ?? [];
+                                                    $algo = $params['algorithm'] ?? 'greedy';
+                                                    $objVal = $params['objective_value'] ?? null;
+                                                    $solveTime = $params['solve_time_ms'] ?? null;
+                                                @endphp
+                                                <span @class([
+                                                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' => $algo === 'greedy',
+                                                    'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' => $algo === 'cpsat',
+                                                ])>
+                                                    {{ $algo === 'cpsat' ? 'CP-SAT' : 'Greedy' }}
+                                                </span>
+                                                @if($objVal !== null && $algo === 'cpsat')
+                                                    <span class="text-xs text-gray-400 ml-1" title="Objective value">obj:
+                                                        {{ number_format($objVal, 1) }}</span>
+                                                @endif
+                                                @if($solveTime)
+                                                    <span class="text-xs text-gray-400 ml-1">{{ number_format($solveTime / 1000, 1) }}с</span>
+                                                @endif
                                             </td>
                                             <td class="px-4 py-3 text-sm text-gray-500">{{ $version->assignments_count }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-500">{{ $version->violations_count }}</td>

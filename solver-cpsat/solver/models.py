@@ -70,9 +70,9 @@ class LockedAssignment(BaseModel):
 
 
 class Weights(BaseModel):
-    w_windows: int = 10
-    w_prefs: int = 5
-    w_balance: int = 2
+    w_windows: float = 10
+    w_prefs: float = 5
+    w_balance: float = 2
 
 
 class SolveRequest(BaseModel):
