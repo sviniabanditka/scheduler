@@ -94,6 +94,12 @@ func (db *PostgresDB) GetScheduleInput(ctx context.Context, tenantID string, cal
 	}
 	input.Preferences = preferences
 
+	preferenceRules, err := db.GetPreferenceRules(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get preference rules: %w", err)
+	}
+	input.PreferenceRules = preferenceRules
+
 	return input, nil
 }
 
@@ -296,6 +302,31 @@ func (db *PostgresDB) GetPreferences(ctx context.Context, tenantID string) ([]ty
 	}
 
 	return prefs, nil
+}
+
+func (db *PostgresDB) GetPreferenceRules(ctx context.Context, tenantID string) ([]types.PreferenceRule, error) {
+	query := `
+		SELECT teacher_id, rule_type, params, weight, is_active
+		FROM teacher_preference_rules
+		WHERE tenant_id = $1 AND is_active = true
+	`
+
+	rows, err := db.pool.Query(ctx, query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []types.PreferenceRule
+	for rows.Next() {
+		var r types.PreferenceRule
+		if err := rows.Scan(&r.TeacherID, &r.RuleType, &r.Params, &r.Weight, &r.IsActive); err != nil {
+			return nil, err
+		}
+		rules = append(rules, r)
+	}
+
+	return rules, nil
 }
 
 func (db *PostgresDB) SaveAssignments(ctx context.Context, tenantID string, scheduleID int64, assignments []types.Assignment) error {

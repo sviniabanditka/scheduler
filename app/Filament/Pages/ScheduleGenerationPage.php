@@ -32,12 +32,18 @@ class ScheduleGenerationPage extends Page
     protected static ?string $title = 'Генерація розкладу';
 
     public ?int $calendar_id = null;
+    public string $algorithm = 'greedy';
     public float $w_windows = 10;
     public float $w_prefs = 5;
     public float $w_balance = 2;
     public int $timeout = 420;
     public ?string $version_name = null;
     public bool $isGenerating = false;
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
 
     public function mount(): void
     {
@@ -75,8 +81,17 @@ class ScheduleGenerationPage extends Page
                             ->minValue(30)
                             ->maxValue(1800)
                             ->helperText('Максимальний час роботи солвера'),
+
+                        Select::make('algorithm')
+                            ->label('Алгоритм')
+                            ->options([
+                                'greedy' => 'Швидкий (жадібний)',
+                                'cpsat' => 'Оптимальний (CP-SAT)',
+                            ])
+                            ->default('greedy')
+                            ->helperText('CP-SAT дає кращий результат, але працює довше'),
                     ])
-                    ->columns(3),
+                    ->columns(4),
 
                 Section::make('Ваги м\'яких обмежень')
                     ->description('Чим більше значення — тим важливіше обмеження')
@@ -132,6 +147,7 @@ class ScheduleGenerationPage extends Page
                 ],
                 timeoutSeconds: $this->timeout,
                 name: $this->version_name,
+                algorithm: $this->algorithm,
             );
 
             Notification::make()

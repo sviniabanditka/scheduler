@@ -28,6 +28,11 @@ class ScheduleManagement extends Page
 
     protected static ?string $navigationGroup = 'Розклад';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
+
     protected static ?string $title = 'Управління розкладом';
 
     // Filters

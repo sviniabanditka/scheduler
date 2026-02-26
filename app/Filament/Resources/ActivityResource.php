@@ -18,6 +18,11 @@ class ActivityResource extends Resource
 
     protected static ?string $navigationGroup = 'Schedule';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
+
     public static function form(Form $form): Form
     {
         return $form

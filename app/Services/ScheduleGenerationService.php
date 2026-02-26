@@ -25,7 +25,8 @@ class ScheduleGenerationService
         int $createdBy,
         ?array $weights = null,
         int $timeoutSeconds = 420,
-        ?string $name = null
+        ?string $name = null,
+        string $algorithm = 'greedy'
     ): ScheduleVersion {
         // Get or create weights
         $softWeights = SoftWeight::withoutGlobalScopes()
@@ -58,6 +59,7 @@ class ScheduleGenerationService
             'generation_params' => [
                 'weights' => $weights,
                 'timeout_seconds' => $timeoutSeconds,
+                'algorithm' => $algorithm,
             ],
         ]);
 
@@ -69,6 +71,7 @@ class ScheduleGenerationService
                 'schedule_id' => $version->id,
                 'weights' => $weights,
                 'timeout_seconds' => $timeoutSeconds,
+                'algorithm' => $algorithm,
             ]);
 
             if ($response->successful()) {

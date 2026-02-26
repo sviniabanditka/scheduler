@@ -14,6 +14,7 @@ type ScheduleRequest struct {
 	Scope          Scope   `json:"scope"`
 	Weights        Weights `json:"weights"`
 	TimeoutSeconds int32   `json:"timeout_seconds"`
+	Algorithm      string  `json:"algorithm,omitempty"` // "greedy" or "cpsat"
 }
 
 type Weights struct {
@@ -125,6 +126,14 @@ type Teacher struct {
 	FullName string `json:"full_name"`
 }
 
+type PreferenceRule struct {
+	TeacherID int64             `json:"teacher_id"`
+	RuleType  string            `json:"rule_type"`
+	Params    map[string]interface{} `json:"params"`
+	Weight    int32             `json:"weight"`
+	IsActive  bool              `json:"is_active"`
+}
+
 type ScheduleInput struct {
 	TenantID         string
 	CalendarID       int64
@@ -137,6 +146,7 @@ type ScheduleInput struct {
 	Teachers         []Teacher
 	Unavailabilities []Unavailability
 	Preferences      []Preference
+	PreferenceRules  []PreferenceRule
 	Weights          Weights
 	ExistingSolution map[string]int64
 }

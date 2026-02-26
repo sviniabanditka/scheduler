@@ -19,6 +19,11 @@ class TenantResource extends Resource
 
     protected static ?string $navigationLabel = 'Мій університет';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isAdmin();
+    }
+
     protected static ?string $modelLabel = 'Університет';
 
     protected static ?string $pluralModelLabel = 'Університет';

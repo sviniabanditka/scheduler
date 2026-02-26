@@ -20,6 +20,11 @@ class SubjectResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
+
     protected static ?string $navigationLabel = 'Предмети';
 
     protected static ?string $modelLabel = 'Предмет';

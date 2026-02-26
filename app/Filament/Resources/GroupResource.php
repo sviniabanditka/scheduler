@@ -19,6 +19,11 @@ class GroupResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
+
     protected static ?string $navigationLabel = 'Групи';
 
     protected static ?string $modelLabel = 'Група';

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\Rule;
 
 class Teacher extends Model
@@ -46,6 +47,21 @@ class Teacher extends Model
     public function unavailabilities(): HasMany
     {
         return $this->hasMany(TeacherUnavailability::class);
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
+
+    public function preferenceRules(): HasMany
+    {
+        return $this->hasMany(TeacherPreferenceRule::class);
+    }
+
+    public function rescheduleRequests(): HasMany
+    {
+        return $this->hasMany(RescheduleRequest::class);
     }
 
     public static function rules($id = null): array

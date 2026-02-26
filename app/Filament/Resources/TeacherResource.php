@@ -19,6 +19,11 @@ class TeacherResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isPlanner();
+    }
+
     protected static ?string $navigationLabel = 'Викладачі';
 
     protected static ?string $modelLabel = 'Викладач';
