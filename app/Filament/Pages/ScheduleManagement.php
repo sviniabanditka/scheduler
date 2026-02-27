@@ -47,6 +47,7 @@ class ScheduleManagement extends Page
     // Edit Modal
     public bool $showEditModal = false;
     public ?int $editingAssignmentId = null;
+    public ?int $modalActivityId = null;
     public ?int $modalRoomId = null;
     public ?int $modalDayOfWeek = null;
     public ?int $modalSlotIndex = null;
@@ -258,6 +259,7 @@ class ScheduleManagement extends Page
         if (!$assignment) return;
 
         $this->editingAssignmentId = $assignment->id;
+        $this->modalActivityId = $assignment->activity_id;
         $this->modalRoomId = $assignment->room_id;
         $this->modalDayOfWeek = $assignment->day_of_week;
         $this->modalSlotIndex = $assignment->slot_index;
@@ -267,15 +269,21 @@ class ScheduleManagement extends Page
 
     public function saveAssignment(): void
     {
-        $assignment = ScheduleAssignment::with('activity.teachers', 'activity.groups')
-            ->find($this->editingAssignmentId);
+        $assignment = ScheduleAssignment::find($this->editingAssignmentId);
         if (!$assignment) {
             Notification::make()->title('Запис не знайдено')->danger()->send();
             return;
         }
 
-        $teacherIds = $assignment->activity?->teachers?->pluck('id')->toArray() ?? [];
-        $groupIds = $assignment->activity?->groups?->pluck('id')->toArray() ?? [];
+        // Load teachers/groups from the selected activity (may differ from original)
+        $activity = Activity::with(['teachers', 'groups'])->find($this->modalActivityId);
+        if (!$activity) {
+            Notification::make()->title('Оберіть заняття')->warning()->send();
+            return;
+        }
+
+        $teacherIds = $activity->teachers->pluck('id')->toArray();
+        $groupIds = $activity->groups->pluck('id')->toArray();
 
         $conflict = $this->checkConflicts(
             $assignment->schedule_version_id,
@@ -294,6 +302,7 @@ class ScheduleManagement extends Page
         }
 
         $assignment->update([
+            'activity_id' => $this->modalActivityId,
             'room_id' => $this->modalRoomId,
             'day_of_week' => $this->modalDayOfWeek,
             'slot_index' => $this->modalSlotIndex,
@@ -303,6 +312,7 @@ class ScheduleManagement extends Page
 
         $this->showEditModal = false;
         $this->editingAssignmentId = null;
+        $this->modalActivityId = null;
 
         Notification::make()
             ->title('Збережено!')
@@ -326,6 +336,11 @@ class ScheduleManagement extends Page
         }
 
         $assignment->delete();
+
+        // Close edit modal if it was open for this assignment
+        $this->showEditModal = false;
+        $this->editingAssignmentId = null;
+        $this->modalActivityId = null;
 
         Notification::make()
             ->title('Видалено')
@@ -352,6 +367,7 @@ class ScheduleManagement extends Page
     {
         $this->showEditModal = false;
         $this->editingAssignmentId = null;
+        $this->modalActivityId = null;
     }
 
     // --- Create Modal ---

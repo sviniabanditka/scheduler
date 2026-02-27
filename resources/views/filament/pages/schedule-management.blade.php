@@ -260,19 +260,27 @@
                 <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 z-10">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Редагувати заняття</h3>
-                        @php
-                            $editingAssignment = $editingAssignmentId ? \App\Models\ScheduleAssignment::with('activity.subject', 'activity.teachers', 'activity.groups')->find($editingAssignmentId) : null;
-                        @endphp
-                        @if($editingAssignment)
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {{ $editingAssignment->activity?->subject?->name ?? '—' }}
-                                | {{ $editingAssignment->activity?->teachers?->pluck('name')->join(', ') }}
-                                | {{ $editingAssignment->activity?->groups?->pluck('name')->join(', ') }}
-                            </p>
-                        @endif
                     </div>
 
                     <div class="p-6 space-y-4">
+                        {{-- Activity (subject) --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Заняття (предмет)</label>
+                            <select wire:model="modalActivityId"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Оберіть заняття</option>
+                                @foreach($this->availableActivities->groupBy(fn($a) => $a->subject->name ?? '—') as $subjectName => $acts)
+                                    <optgroup label="{{ $subjectName }}">
+                                        @foreach($acts as $act)
+                                            <option value="{{ $act->id }}">
+                                                {{ $act->activity_type }} | {{ $act->teachers->pluck('name')->join(', ') }} | {{ $act->groups->pluck('name')->join(', ') }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+
                         {{-- Room --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Аудиторія</label>
@@ -323,15 +331,24 @@
                         </div>
                     </div>
 
-                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                        <button wire:click="closeEditModal"
-                            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
-                            Скасувати
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                        {{-- Delete button on the left --}}
+                        <button wire:click="deleteAssignment({{ $editingAssignmentId }})"
+                            wire:confirm="Видалити це заняття з розкладу?"
+                            class="px-4 py-2 rounded-lg border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 text-sm font-medium transition">
+                            🗑️ Видалити
                         </button>
-                        <button wire:click="saveAssignment"
-                            class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
-                            Зберегти
-                        </button>
+
+                        <div class="flex gap-3">
+                            <button wire:click="closeEditModal"
+                                class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
+                                Скасувати
+                            </button>
+                            <button wire:click="saveAssignment"
+                                class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
+                                Зберегти
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
