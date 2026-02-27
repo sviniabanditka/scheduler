@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\GenerateScheduleJob;
 use App\Models\Calendar;
 use App\Models\ScheduleVersion;
 use App\Models\SoftWeight;
@@ -86,10 +87,11 @@ class ScheduleGenerationPage extends Page
                             ->label('Алгоритм')
                             ->options([
                                 'greedy' => 'Швидкий (жадібний)',
-                                'cpsat' => 'Оптимальний (CP-SAT)',
+                                'annealing' => 'Оптимальний (відпал)',
+                                'tabu' => 'Пошук табу',
                             ])
                             ->default('greedy')
-                            ->helperText('CP-SAT дає кращий результат, але працює довше'),
+                            ->helperText('Відпал та табу дають кращий результат, але працюють довше'),
                     ])
                     ->columns(4),
 
@@ -133,35 +135,41 @@ class ScheduleGenerationPage extends Page
 
         $user = auth()->user();
 
-        $service = app(ScheduleGenerationService::class);
+        $weights = [
+            'w_windows' => $this->w_windows,
+            'w_prefs' => $this->w_prefs,
+            'w_balance' => $this->w_balance,
+        ];
 
-        try {
-            $version = $service->generate(
-                tenantId: $user->tenant_id,
-                calendarId: $this->calendar_id,
-                createdBy: $user->id,
-                weights: [
-                    'w_windows' => $this->w_windows,
-                    'w_prefs' => $this->w_prefs,
-                    'w_balance' => $this->w_balance,
-                ],
-                timeoutSeconds: $this->timeout,
-                name: $this->version_name,
-                algorithm: $this->algorithm,
-            );
+        // Find next version number
+        $maxVersion = ScheduleVersion::withoutGlobalScopes()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('calendar_id', $this->calendar_id)
+            ->max('version_number') ?? 0;
 
-            Notification::make()
-                ->title('Розклад згенеровано!')
-                ->body("Версія: {$version->name}")
-                ->success()
-                ->send();
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Помилка генерації')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-        }
+        $version = ScheduleVersion::withoutGlobalScopes()->create([
+            'tenant_id' => $user->tenant_id,
+            'calendar_id' => $this->calendar_id,
+            'name' => $this->version_name ?: "Розклад v" . ($maxVersion + 1),
+            'status' => 'generating',
+            'created_by' => $user->id,
+            'version_number' => $maxVersion + 1,
+            'random_seed' => random_int(1, 999999),
+            'generation_started_at' => now(),
+            'generation_params' => [
+                'weights' => $weights,
+                'timeout_seconds' => $this->timeout,
+                'algorithm' => $this->algorithm,
+            ],
+        ]);
+
+        GenerateScheduleJob::dispatch($version->id, $this->algorithm);
+
+        Notification::make()
+            ->title('Генерацію запущено!')
+            ->body("Версія \"{$version->name}\" генерується у фоні")
+            ->success()
+            ->send();
     }
 
     public function publishVersion(int $versionId): void
@@ -188,6 +196,11 @@ class ScheduleGenerationPage extends Page
             ->body("Версія \"{$version->name}\" тепер в архіві")
             ->warning()
             ->send();
+    }
+
+    public function getHasGeneratingVersionsProperty(): bool
+    {
+        return ScheduleVersion::where('status', 'generating')->exists();
     }
 
     public function getRecentVersionsProperty()

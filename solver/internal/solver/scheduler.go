@@ -1,7 +1,6 @@
 package solver
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,18 +16,12 @@ import (
 )
 
 type Scheduler struct {
-	db         *db.PostgresDB
-	cpsatURL   string
-	httpClient *http.Client
+	db *db.PostgresDB
 }
 
-func NewScheduler(database *db.PostgresDB, cpsatURL string) *Scheduler {
+func NewScheduler(database *db.PostgresDB) *Scheduler {
 	return &Scheduler{
-		db:       database,
-		cpsatURL: cpsatURL,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Minute,
-		},
+		db: database,
 	}
 }
 
@@ -77,13 +70,17 @@ func (s *Scheduler) solve(ctx context.Context, req *types.ScheduleRequest) (*typ
 		}, nil
 	}
 
-	log.Printf("Solve request: tenant=%s calendar=%d schedule=%d algorithm='%s' cpsatURL='%s' activities=%d",
-		req.TenantID, req.CalendarID, req.ScheduleID, req.Algorithm, s.cpsatURL, len(input.Activities))
+	log.Printf("Solve request: tenant=%s calendar=%d schedule=%d algorithm='%s' activities=%d",
+		req.TenantID, req.CalendarID, req.ScheduleID, req.Algorithm, len(input.Activities))
 
 	// Route to appropriate algorithm
-	if req.Algorithm == "cpsat" && s.cpsatURL != "" {
-		log.Printf("Routing to CP-SAT solver")
-		return s.solveCPSAT(ctx, input, req, startTime)
+	switch req.Algorithm {
+	case "annealing", "cpsat":
+		log.Printf("Routing to Simulated Annealing solver")
+		return s.solveAnnealing(ctx, input, req, startTime)
+	case "tabu":
+		log.Printf("Routing to Tabu Search solver")
+		return s.solveTabuSearch(ctx, input, req, startTime)
 	}
 
 	log.Printf("Routing to greedy solver")
@@ -101,108 +98,6 @@ func (s *Scheduler) solve(ctx context.Context, req *types.ScheduleRequest) (*typ
 		AssignmentIDs:   extractIDs(assignments),
 		Violations:      violations,
 		TotalViolations: int32(len(violations)),
-		SolveTimeMs:     solveTimeMs,
-	}, nil
-}
-
-// solveCPSAT proxies the solving to the Python CP-SAT microservice
-func (s *Scheduler) solveCPSAT(ctx context.Context, input *types.ScheduleInput, req *types.ScheduleRequest, startTime time.Time) (*types.ScheduleResult, error) {
-	// Build request payload for the Python service
-	payload := map[string]interface{}{
-		"activities":       input.Activities,
-		"time_slots":       input.TimeSlots,
-		"rooms":            input.Rooms,
-		"unavailabilities": input.Unavailabilities,
-		"preferences":      input.Preferences,
-		"preference_rules": input.PreferenceRules,
-		"weights":          req.Weights,
-		"timeout_seconds":  req.TimeoutSeconds,
-	}
-
-	// Get locked assignments
-	lockedAssignments := []map[string]interface{}{}
-	// TODO: load locked from DB if needed
-	payload["locked_assignments"] = lockedAssignments
-
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal cpsat request: %w", err)
-	}
-
-	url := s.cpsatURL + "/api/v1/solve"
-	log.Printf("Calling CP-SAT solver at %s with %d activities", url, len(input.Activities))
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonPayload))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cpsat request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call cpsat solver: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes := make([]byte, 1024)
-		n, _ := resp.Body.Read(bodyBytes)
-		return nil, fmt.Errorf("cpsat solver returned status %d: %s", resp.StatusCode, string(bodyBytes[:n]))
-	}
-
-	var cpsatResult struct {
-		Status      string `json:"status"`
-		Assignments []struct {
-			ActivityID int64  `json:"activity_id"`
-			DayOfWeek  int32  `json:"day_of_week"`
-			SlotIndex  int32  `json:"slot_index"`
-			Parity     string `json:"parity"`
-			RoomID     int64  `json:"room_id"`
-		} `json:"assignments"`
-		Violations     []types.Violation `json:"violations"`
-		ObjectiveValue float64           `json:"objective_value"`
-		SolveTimeMs    int64             `json:"solve_time_ms"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&cpsatResult); err != nil {
-		return nil, fmt.Errorf("failed to decode cpsat response: %w", err)
-	}
-
-	// Convert to internal assignments
-	var assignments []types.Assignment
-	for _, a := range cpsatResult.Assignments {
-		assignments = append(assignments, types.Assignment{
-			ScheduleID: input.ScheduleID,
-			ActivityID: a.ActivityID,
-			DayOfWeek:  a.DayOfWeek,
-			SlotIndex:  a.SlotIndex,
-			Parity:     a.Parity,
-			RoomID:     a.RoomID,
-			Locked:     false,
-			Source:     "solver",
-		})
-	}
-
-	// Save to database
-	if err := s.saveResults(ctx, input.TenantID, input.ScheduleID, assignments, cpsatResult.Violations); err != nil {
-		log.Printf("Failed to save cpsat results: %v", err)
-	}
-
-	solveTimeMs := time.Since(startTime).Milliseconds()
-
-	resultStatus := types.ResultStatus_FEASIBLE
-	if cpsatResult.Status == "optimal" {
-		resultStatus = types.ResultStatus_OPTIMAL
-	} else if cpsatResult.Status == "infeasible" {
-		resultStatus = types.ResultStatus_INFEASIBLE
-	}
-
-	return &types.ScheduleResult{
-		Status:          resultStatus,
-		AssignmentIDs:   extractIDs(assignments),
-		Violations:      cpsatResult.Violations,
-		TotalViolations: int32(len(cpsatResult.Violations)),
-		ObjectiveValue:  cpsatResult.ObjectiveValue,
 		SolveTimeMs:     solveTimeMs,
 	}, nil
 }
@@ -256,7 +151,7 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 			slot := input.TimeSlots[slotIdx]
 			slotKey := fmt.Sprintf("%d_%d_%s", slot.DayOfWeek, slot.SlotIndex, slot.Parity)
 
-			compatibleRooms := s.getCompatibleRooms(input.Rooms, activity)
+			compatibleRooms := getCompatibleRooms(input.Rooms, activity)
 			rand.Shuffle(len(compatibleRooms), func(i, j int) {
 				compatibleRooms[i], compatibleRooms[j] = compatibleRooms[j], compatibleRooms[i]
 			})
@@ -333,29 +228,6 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 	return assignments, violations
 }
 
-func (s *Scheduler) getCompatibleRooms(rooms []types.Room, activity *types.Activity) []types.Room {
-	var compatible []types.Room
-
-	for _, room := range rooms {
-		if room.Capacity < activity.GroupSize {
-			continue
-		}
-
-		if len(activity.RoomTypes) == 0 {
-			compatible = append(compatible, room)
-			continue
-		}
-
-		for _, rt := range activity.RoomTypes {
-			if rt == room.RoomType || (rt == "lab" && room.RoomType == "pc") {
-				compatible = append(compatible, room)
-				break
-			}
-		}
-	}
-
-	return compatible
-}
 
 func (s *Scheduler) isSlotAvailable(activity *types.Activity, slot types.TimeSlot, unavails []types.Unavailability) bool {
 	for _, unav := range unavails {

@@ -41,13 +41,24 @@ class ScheduleManagement extends Page
     public ?string $startDate = null;
     public ?string $endDate = null;
 
-    // Modal
+    // Stats
+    public bool $showStats = false;
+
+    // Edit Modal
     public bool $showEditModal = false;
     public ?int $editingAssignmentId = null;
     public ?int $modalRoomId = null;
     public ?int $modalDayOfWeek = null;
     public ?int $modalSlotIndex = null;
     public ?string $modalParity = 'both';
+
+    // Create Modal
+    public bool $showCreateModal = false;
+    public ?int $createActivityId = null;
+    public ?int $createRoomId = null;
+    public ?int $createDayOfWeek = null;
+    public ?int $createSlotIndex = null;
+    public ?string $createParity = 'both';
 
     public function mount(): void
     {
@@ -256,112 +267,30 @@ class ScheduleManagement extends Page
 
     public function saveAssignment(): void
     {
-        $assignment = ScheduleAssignment::find($this->editingAssignmentId);
+        $assignment = ScheduleAssignment::with('activity.teachers', 'activity.groups')
+            ->find($this->editingAssignmentId);
         if (!$assignment) {
             Notification::make()->title('Запис не знайдено')->danger()->send();
             return;
         }
 
-        // Validate: check for conflicts
-        $conflict = ScheduleAssignment::where('schedule_version_id', $assignment->schedule_version_id)
-            ->where('id', '!=', $assignment->id)
-            ->where('day_of_week', $this->modalDayOfWeek)
-            ->where('slot_index', $this->modalSlotIndex)
-            ->where(function ($q) {
-                $q->where('parity', 'both')
-                    ->orWhere('parity', $this->modalParity)
-                    ->orWhere(fn ($q2) => $q2->whereRaw("? = 'both'", [$this->modalParity]));
-            })
-            ->where(function ($q) use ($assignment) {
-                // Same room conflict
-                if ($this->modalRoomId) {
-                    $q->where('room_id', $this->modalRoomId);
-                }
-            })
-            ->first();
+        $teacherIds = $assignment->activity?->teachers?->pluck('id')->toArray() ?? [];
+        $groupIds = $assignment->activity?->groups?->pluck('id')->toArray() ?? [];
 
-        if ($conflict && $this->modalRoomId) {
-            // Check room conflict
-            $roomConflict = ScheduleAssignment::where('schedule_version_id', $assignment->schedule_version_id)
-                ->where('id', '!=', $assignment->id)
-                ->where('day_of_week', $this->modalDayOfWeek)
-                ->where('slot_index', $this->modalSlotIndex)
-                ->where('room_id', $this->modalRoomId)
-                ->where(function ($q) {
-                    $q->where('parity', 'both')
-                        ->orWhere('parity', $this->modalParity)
-                        ->orWhere(fn ($q2) => $q2->whereRaw("? = 'both'", [$this->modalParity]));
-                })
-                ->with('activity.subject')
-                ->first();
+        $conflict = $this->checkConflicts(
+            $assignment->schedule_version_id,
+            $assignment->id,
+            $this->modalDayOfWeek,
+            $this->modalSlotIndex,
+            $this->modalParity,
+            $this->modalRoomId,
+            $teacherIds,
+            $groupIds,
+        );
 
-            if ($roomConflict) {
-                $conflictSubject = $roomConflict->activity?->subject?->name ?? '—';
-                Notification::make()
-                    ->title('Конфлікт аудиторії!')
-                    ->body("Аудиторія вже зайнята: {$conflictSubject}")
-                    ->danger()
-                    ->send();
-                return;
-            }
-        }
-
-        // Check teacher conflict
-        $activityTeacherIds = $assignment->activity?->teachers?->pluck('id')->toArray() ?? [];
-        if (!empty($activityTeacherIds)) {
-            $teacherConflict = ScheduleAssignment::where('schedule_version_id', $assignment->schedule_version_id)
-                ->where('id', '!=', $assignment->id)
-                ->where('day_of_week', $this->modalDayOfWeek)
-                ->where('slot_index', $this->modalSlotIndex)
-                ->where(function ($q) {
-                    $q->where('parity', 'both')
-                        ->orWhere('parity', $this->modalParity)
-                        ->orWhere(fn ($q2) => $q2->whereRaw("? = 'both'", [$this->modalParity]));
-                })
-                ->whereHas('activity.teachers', function ($q) use ($activityTeacherIds) {
-                    $q->whereIn('teachers.id', $activityTeacherIds);
-                })
-                ->with('activity.subject')
-                ->first();
-
-            if ($teacherConflict) {
-                $conflictSubject = $teacherConflict->activity?->subject?->name ?? '—';
-                Notification::make()
-                    ->title('Конфлікт викладача!')
-                    ->body("Викладач вже має заняття: {$conflictSubject}")
-                    ->danger()
-                    ->send();
-                return;
-            }
-        }
-
-        // Check group conflict
-        $activityGroupIds = $assignment->activity?->groups?->pluck('id')->toArray() ?? [];
-        if (!empty($activityGroupIds)) {
-            $groupConflict = ScheduleAssignment::where('schedule_version_id', $assignment->schedule_version_id)
-                ->where('id', '!=', $assignment->id)
-                ->where('day_of_week', $this->modalDayOfWeek)
-                ->where('slot_index', $this->modalSlotIndex)
-                ->where(function ($q) {
-                    $q->where('parity', 'both')
-                        ->orWhere('parity', $this->modalParity)
-                        ->orWhere(fn ($q2) => $q2->whereRaw("? = 'both'", [$this->modalParity]));
-                })
-                ->whereHas('activity.groups', function ($q) use ($activityGroupIds) {
-                    $q->whereIn('groups.id', $activityGroupIds);
-                })
-                ->with('activity.subject')
-                ->first();
-
-            if ($groupConflict) {
-                $conflictSubject = $groupConflict->activity?->subject?->name ?? '—';
-                Notification::make()
-                    ->title('Конфлікт групи!')
-                    ->body("Група вже має заняття: {$conflictSubject}")
-                    ->danger()
-                    ->send();
-                return;
-            }
+        if ($conflict) {
+            Notification::make()->title($conflict['title'])->body($conflict['body'])->danger()->send();
+            return;
         }
 
         $assignment->update([
@@ -423,5 +352,205 @@ class ScheduleManagement extends Page
     {
         $this->showEditModal = false;
         $this->editingAssignmentId = null;
+    }
+
+    // --- Create Modal ---
+
+    public function openCreateModal(int $day, int $slot): void
+    {
+        $this->createDayOfWeek = $day;
+        $this->createSlotIndex = $slot;
+        $this->createActivityId = null;
+        $this->createRoomId = null;
+        $this->createParity = 'both';
+        $this->showCreateModal = true;
+    }
+
+    public function closeCreateModal(): void
+    {
+        $this->showCreateModal = false;
+        $this->createActivityId = null;
+    }
+
+    public function createAssignment(): void
+    {
+        if (!$this->selectedVersion || !$this->createActivityId) {
+            Notification::make()->title('Оберіть заняття')->warning()->send();
+            return;
+        }
+
+        $version = ScheduleVersion::find($this->selectedVersion);
+        if (!$version) return;
+
+        $activity = Activity::with(['teachers', 'groups'])->find($this->createActivityId);
+        if (!$activity) return;
+
+        $teacherIds = $activity->teachers->pluck('id')->toArray();
+        $groupIds = $activity->groups->pluck('id')->toArray();
+
+        $conflict = $this->checkConflicts(
+            $version->id,
+            null,
+            $this->createDayOfWeek,
+            $this->createSlotIndex,
+            $this->createParity,
+            $this->createRoomId,
+            $teacherIds,
+            $groupIds,
+        );
+
+        if ($conflict) {
+            Notification::make()->title($conflict['title'])->body($conflict['body'])->danger()->send();
+            return;
+        }
+
+        ScheduleAssignment::create([
+            'tenant_id' => $version->tenant_id,
+            'schedule_version_id' => $version->id,
+            'activity_id' => $this->createActivityId,
+            'day_of_week' => $this->createDayOfWeek,
+            'slot_index' => $this->createSlotIndex,
+            'parity' => $this->createParity,
+            'room_id' => $this->createRoomId,
+            'locked' => false,
+            'source' => 'manual',
+        ]);
+
+        $this->showCreateModal = false;
+        $this->createActivityId = null;
+
+        Notification::make()
+            ->title('Додано!')
+            ->body('Заняття додано до розкладу')
+            ->success()
+            ->send();
+    }
+
+    public function getAvailableActivitiesProperty()
+    {
+        if (!$this->selectedVersion) return collect();
+
+        $version = ScheduleVersion::find($this->selectedVersion);
+        if (!$version) return collect();
+
+        return Activity::where('calendar_id', $version->calendar_id)
+            ->with(['subject', 'teachers', 'groups'])
+            ->orderBy('subject_id')
+            ->get();
+    }
+
+    // --- Stats ---
+
+    public function toggleStats(): void
+    {
+        $this->showStats = !$this->showStats;
+    }
+
+    public function getSubjectStatsProperty(): array
+    {
+        if (!$this->selectedVersion) return [];
+
+        $version = ScheduleVersion::find($this->selectedVersion);
+        if (!$version) return [];
+
+        $activities = Activity::where('calendar_id', $version->calendar_id)
+            ->with(['subject', 'teachers', 'groups'])
+            ->get();
+
+        $assignmentCounts = ScheduleAssignment::where('schedule_version_id', $version->id)
+            ->selectRaw('activity_id, count(*) as cnt')
+            ->groupBy('activity_id')
+            ->pluck('cnt', 'activity_id');
+
+        $stats = [];
+        foreach ($activities as $activity) {
+            $required = $activity->required_slots_per_period;
+            $assigned = $assignmentCounts[$activity->id] ?? 0;
+            $diff = $assigned - $required;
+
+            $status = 'ok';
+            if ($diff < 0) $status = 'missing';
+            elseif ($diff > 0) $status = 'excess';
+
+            $stats[] = [
+                'subject' => $activity->subject->name ?? '—',
+                'type' => $activity->activity_type,
+                'groups' => $activity->groups->pluck('name')->join(', '),
+                'teachers' => $activity->teachers->pluck('name')->join(', '),
+                'required' => $required,
+                'assigned' => $assigned,
+                'diff' => $diff,
+                'status' => $status,
+            ];
+        }
+
+        return $stats;
+    }
+
+    // --- Conflict Checking ---
+
+    private function checkConflicts(
+        int $versionId,
+        ?int $excludeAssignmentId,
+        int $dayOfWeek,
+        int $slotIndex,
+        string $parity,
+        ?int $roomId,
+        array $teacherIds,
+        array $groupIds,
+    ): ?array {
+        $baseQuery = fn () => ScheduleAssignment::where('schedule_version_id', $versionId)
+            ->when($excludeAssignmentId, fn ($q) => $q->where('id', '!=', $excludeAssignmentId))
+            ->where('day_of_week', $dayOfWeek)
+            ->where('slot_index', $slotIndex)
+            ->where(function ($q) use ($parity) {
+                $q->where('parity', 'both')
+                    ->orWhere('parity', $parity)
+                    ->orWhere(fn ($q2) => $q2->whereRaw("? = 'both'", [$parity]));
+            });
+
+        // Room conflict
+        if ($roomId) {
+            $roomConflict = $baseQuery()
+                ->where('room_id', $roomId)
+                ->with('activity.subject')
+                ->first();
+            if ($roomConflict) {
+                return [
+                    'title' => 'Конфлікт аудиторії!',
+                    'body' => 'Аудиторія вже зайнята: ' . ($roomConflict->activity?->subject?->name ?? '—'),
+                ];
+            }
+        }
+
+        // Teacher conflict
+        if (!empty($teacherIds)) {
+            $teacherConflict = $baseQuery()
+                ->whereHas('activity.teachers', fn ($q) => $q->whereIn('teachers.id', $teacherIds))
+                ->with('activity.subject')
+                ->first();
+            if ($teacherConflict) {
+                return [
+                    'title' => 'Конфлікт викладача!',
+                    'body' => 'Викладач вже має заняття: ' . ($teacherConflict->activity?->subject?->name ?? '—'),
+                ];
+            }
+        }
+
+        // Group conflict
+        if (!empty($groupIds)) {
+            $groupConflict = $baseQuery()
+                ->whereHas('activity.groups', fn ($q) => $q->whereIn('groups.id', $groupIds))
+                ->with('activity.subject')
+                ->first();
+            if ($groupConflict) {
+                return [
+                    'title' => 'Конфлікт групи!',
+                    'body' => 'Група вже має заняття: ' . ($groupConflict->activity?->subject?->name ?? '—'),
+                ];
+            }
+        }
+
+        return null;
     }
 }

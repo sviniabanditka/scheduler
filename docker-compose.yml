@@ -59,6 +59,23 @@ services:
     networks:
       - scheduler
 
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: scheduler_queue_worker
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - scheduler
+    depends_on:
+      - postgres
+      - redis
+    command: php artisan queue:work redis --tries=1 --timeout=660 --sleep=3
+
   solver:
     build:
       context: .
@@ -72,21 +89,8 @@ services:
       - scheduler
     depends_on:
       - postgres
-      - solver-cpsat
     environment:
       - DATABASE_URL=host=postgres user=${DB_USERNAME} password=${DB_PASSWORD} dbname=${DB_DATABASE} port=5432 sslmode=disable
-      - CPSAT_SOLVER_URL=http://solver-cpsat:8082
-
-  solver-cpsat:
-    build:
-      context: solver-cpsat
-      dockerfile: Dockerfile
-    container_name: scheduler_solver_cpsat
-    restart: unless-stopped
-    ports:
-      - "8082:8082"
-    networks:
-      - scheduler
 
   composer:
     image: composer:latest

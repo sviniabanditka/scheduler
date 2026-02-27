@@ -17,7 +17,6 @@ import (
 func main() {
 	port := getEnv("HTTP_PORT", "8081")
 	dbURL := getEnv("DATABASE_URL", "host=localhost user=postgres password=secret dbname=scheduler port=5432 sslmode=disable")
-	cpsatURL := getEnv("CPSAT_SOLVER_URL", "")
 
 	database, err := db.NewPostgresDB(dbURL)
 	if err != nil {
@@ -25,11 +24,7 @@ func main() {
 	}
 	defer database.Close()
 
-	if cpsatURL != "" {
-		log.Printf("CP-SAT solver URL: %s", cpsatURL)
-	}
-
-	scheduler := solver.NewScheduler(database, cpsatURL)
+	scheduler := solver.NewScheduler(database)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

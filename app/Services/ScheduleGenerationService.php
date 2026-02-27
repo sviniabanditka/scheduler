@@ -63,11 +63,33 @@ class ScheduleGenerationService
             ],
         ]);
 
-        // Call Go solver
+        $this->generateForVersion($version, $algorithm, $timeoutSeconds, $weights);
+
+        return $version->refresh();
+    }
+
+    /**
+     * Execute the solver HTTP call for a given version
+     */
+    public function generateForVersion(
+        ScheduleVersion $version,
+        string $algorithm = 'greedy',
+        int $timeoutSeconds = 420,
+        ?array $weights = null,
+    ): void {
+        $params = $version->generation_params ?? [];
+        $weights = $weights ?? $params['weights'] ?? [
+            'w_windows' => 10,
+            'w_prefs' => 5,
+            'w_balance' => 2,
+        ];
+        $algorithm = $algorithm ?: ($params['algorithm'] ?? 'greedy');
+        $timeoutSeconds = $timeoutSeconds ?: ($params['timeout_seconds'] ?? 420);
+
         try {
             $response = Http::timeout($timeoutSeconds + 30)->post("{$this->solverUrl}/api/v1/generate", [
-                'tenant_id' => $tenantId,
-                'calendar_id' => $calendarId,
+                'tenant_id' => $version->tenant_id,
+                'calendar_id' => $version->calendar_id,
                 'schedule_id' => $version->id,
                 'weights' => $weights,
                 'timeout_seconds' => $timeoutSeconds,
@@ -99,15 +121,15 @@ class ScheduleGenerationService
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+                throw new \RuntimeException("Solver returned HTTP {$response->status()}");
             }
         } catch (\Exception $e) {
             Log::error("Failed to call solver", [
                 'version_id' => $version->id,
                 'error' => $e->getMessage(),
             ]);
+            throw $e;
         }
-
-        return $version->refresh();
     }
 
     /**

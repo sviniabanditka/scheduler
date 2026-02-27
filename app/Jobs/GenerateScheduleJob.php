@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ScheduleVersion;
 use App\Services\ScheduleGenerationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,32 +15,53 @@ class GenerateScheduleJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 600; // 10 minutes max
+    public int $tries = 1;
+    public int $timeout = 660;
 
     public function __construct(
-        public string $tenantId,
-        public int $calendarId,
-        public int $createdBy,
-        public ?array $weights = null,
-        public int $timeoutSeconds = 420,
-        public ?string $name = null,
-    ) {
-    }
+        public int $scheduleVersionId,
+        public string $algorithm = 'greedy',
+    ) {}
 
     public function handle(ScheduleGenerationService $service): void
     {
-        Log::info("Starting schedule generation job", [
-            'tenant_id' => $this->tenantId,
-            'calendar_id' => $this->calendarId,
+        $version = ScheduleVersion::withoutGlobalScopes()->findOrFail($this->scheduleVersionId);
+
+        $version->update([
+            'status' => 'generating',
+            'generation_started_at' => now(),
         ]);
 
-        $service->generate(
-            $this->tenantId,
-            $this->calendarId,
-            $this->createdBy,
-            $this->weights,
-            $this->timeoutSeconds,
-            $this->name,
+        $params = $version->generation_params ?? [];
+
+        $service->generateForVersion(
+            version: $version,
+            algorithm: $this->algorithm,
+            timeoutSeconds: $params['timeout_seconds'] ?? 420,
+            weights: $params['weights'] ?? null,
         );
+
+        $version->update([
+            'status' => 'draft',
+            'generation_finished_at' => now(),
+        ]);
+
+        Log::info("GenerateScheduleJob completed", ['version_id' => $version->id]);
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error("GenerateScheduleJob failed", [
+            'version_id' => $this->scheduleVersionId,
+            'error' => $exception?->getMessage(),
+        ]);
+
+        $version = ScheduleVersion::withoutGlobalScopes()->find($this->scheduleVersionId);
+        if ($version) {
+            $version->update([
+                'status' => 'failed',
+                'generation_finished_at' => now(),
+            ]);
+        }
     }
 }

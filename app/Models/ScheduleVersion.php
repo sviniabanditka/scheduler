@@ -24,11 +24,15 @@ class ScheduleVersion extends Model
         'random_seed',
         'generation_params',
         'published_at',
+        'generation_started_at',
+        'generation_finished_at',
     ];
 
     protected $casts = [
         'generation_params' => 'array',
         'published_at' => 'datetime',
+        'generation_started_at' => 'datetime',
+        'generation_finished_at' => 'datetime',
         'version_number' => 'integer',
         'random_seed' => 'integer',
     ];

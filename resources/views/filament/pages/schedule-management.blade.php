@@ -73,6 +73,77 @@
             @endif
         </div>
 
+        {{-- Stats Toggle + Panel --}}
+        @if($this->selectedVersion)
+            <div class="flex gap-2">
+                <button wire:click="toggleStats"
+                    class="inline-flex items-center px-4 py-2 rounded-lg border text-sm font-medium transition
+                        {{ $showStats
+                            ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:border-primary-600 dark:text-primary-300'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                    {{ $showStats ? 'Сховати статистику' : 'Статистика предметів' }}
+                </button>
+            </div>
+
+            @if($showStats)
+                @php
+                    $stats = $this->subjectStats;
+                    $totalMissing = collect($stats)->where('status', 'missing')->count();
+                    $totalExcess = collect($stats)->where('status', 'excess')->count();
+                    $totalOk = collect($stats)->where('status', 'ok')->count();
+                @endphp
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Статистика покриття предметів</h2>
+                        <div class="flex gap-3 text-sm">
+                            <span class="text-green-600 dark:text-green-400 font-medium">{{ $totalOk }} ок</span>
+                            <span class="text-red-600 dark:text-red-400 font-medium">{{ $totalMissing }} недостатньо</span>
+                            <span class="text-yellow-600 dark:text-yellow-400 font-medium">{{ $totalExcess }} надлишок</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Предмет</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Тип</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Групи</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Викладачі</th>
+                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Потрібно</th>
+                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Призначено</th>
+                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Різниця</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($stats as $row)
+                                    <tr @class([
+                                        'bg-red-50 dark:bg-red-900/10' => $row['status'] === 'missing',
+                                        'bg-yellow-50 dark:bg-yellow-900/10' => $row['status'] === 'excess',
+                                    ])>
+                                        <td class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">{{ $row['subject'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">{{ $row['type'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">{{ $row['groups'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">{{ $row['teachers'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-center">{{ $row['required'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-center">{{ $row['assigned'] }}</td>
+                                        <td class="px-4 py-2 text-sm text-center font-medium">
+                                            <span @class([
+                                                'text-red-600 dark:text-red-400' => $row['status'] === 'missing',
+                                                'text-yellow-600 dark:text-yellow-400' => $row['status'] === 'excess',
+                                                'text-green-600 dark:text-green-400' => $row['status'] === 'ok',
+                                            ])>
+                                                {{ $row['diff'] >= 0 ? '+' : '' }}{{ $row['diff'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+        @endif
+
         {{-- Schedule Table --}}
         @php $data = $this->scheduleData; @endphp
 
@@ -153,8 +224,10 @@
                                                     </div>
                                                 </div>
                                             @else
-                                                <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 p-2 text-center text-gray-400 dark:text-gray-500 text-xs h-12 flex items-center justify-center">
-                                                    —
+                                                <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 p-2 text-center text-gray-400 dark:text-gray-500 text-xs h-12 flex items-center justify-center cursor-pointer hover:border-primary-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition group"
+                                                    wire:click="openCreateModal({{ $day['day_of_week'] }}, {{ $slot->slot_index }})">
+                                                    <span class="group-hover:hidden">—</span>
+                                                    <span class="hidden group-hover:inline">+ Додати</span>
                                                 </div>
                                             @endif
                                         </td>
@@ -258,6 +331,79 @@
                         <button wire:click="saveAssignment"
                             class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
                             Зберегти
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Create Modal --}}
+    @if($showCreateModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" x-data x-init="$el.focus()" @keydown.escape="$wire.closeCreateModal()">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="fixed inset-0 bg-gray-900/50 transition-opacity" wire:click="closeCreateModal"></div>
+
+                <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 z-10">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Додати заняття</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {{ ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'][$createDayOfWeek ?? 0] ?? '' }},
+                            пара {{ $createSlotIndex }}
+                        </p>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        {{-- Activity --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Заняття</label>
+                            <select wire:model="createActivityId"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Оберіть заняття</option>
+                                @foreach($this->availableActivities->groupBy(fn($a) => $a->subject->name ?? '—') as $subjectName => $acts)
+                                    <optgroup label="{{ $subjectName }}">
+                                        @foreach($acts as $act)
+                                            <option value="{{ $act->id }}">
+                                                {{ $act->activity_type }} | {{ $act->teachers->pluck('name')->join(', ') }} | {{ $act->groups->pluck('name')->join(', ') }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Room --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Аудиторія</label>
+                            <select wire:model="createRoomId"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Без аудиторії</option>
+                                @foreach($this->rooms as $room)
+                                    <option value="{{ $room->id }}">{{ $room->code }} — {{ $room->title }} ({{ $room->capacity }} місць)</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Parity --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Парність</label>
+                            <select wire:model="createParity"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="both">Обидва тижні</option>
+                                <option value="num">Чисельник</option>
+                                <option value="den">Знаменник</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                        <button wire:click="closeCreateModal"
+                            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
+                            Скасувати
+                        </button>
+                        <button wire:click="createAssignment"
+                            class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
+                            Додати
                         </button>
                     </div>
                 </div>
