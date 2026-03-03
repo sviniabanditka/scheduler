@@ -35,6 +35,7 @@ class ScheduleGenerationService
 
         $defaultWeights = [
             'w_windows' => $softWeights->w_windows ?? 10,
+            'w_teacher_windows' => $softWeights->w_teacher_windows ?? 1,
             'w_prefs' => $softWeights->w_prefs ?? 5,
             'w_balance' => $softWeights->w_balance ?? 2,
         ];
@@ -80,6 +81,7 @@ class ScheduleGenerationService
         $params = $version->generation_params ?? [];
         $weights = $weights ?? $params['weights'] ?? [
             'w_windows' => 10,
+            'w_teacher_windows' => 1,
             'w_prefs' => 5,
             'w_balance' => 2,
         ];

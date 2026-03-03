@@ -36,89 +36,89 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->recentVersions as $version)
-                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                                                {{ $version->name }}
-                                            </td>
-                                            <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                {{ $version->calendar?->name }}
-                                            </td>
-                                            <td class="px-4 py-3">
-                                                <span @class([
-                                                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' => $version->status === 'draft',
-                                                    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' => $version->status === 'published',
-                                                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' => $version->status === 'archived',
-                                                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' => $version->status === 'generating',
-                                                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' => $version->status === 'failed',
-                                                ])>
-                                                    @if($version->status === 'generating')
-                                                        <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                                        </svg>
-                                                    @endif
-                                                    {{ match ($version->status) {
-                                'draft' => 'Чернетка',
-                                'published' => 'Опубліковано',
-                                'archived' => 'Архів',
-                                'generating' => 'Генерується...',
-                                'failed' => 'Помилка',
-                                default => $version->status,
-                            } }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-3 text-sm">
-                                                @php
-                                                    $params = $version->generation_params ?? [];
-                                                    $algo = $params['algorithm'] ?? 'greedy';
-                                                    $objVal = $params['objective_value'] ?? null;
-                                                    $solveTime = $params['solve_time_ms'] ?? null;
-                                                @endphp
-                                                <span @class([
-                                                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                                                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' => $algo === 'greedy',
-                                                    'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' => in_array($algo, ['annealing', 'cpsat']),
-                                                    'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' => $algo === 'tabu',
-                                                ])>
-                                                    {{ match($algo) { 'annealing', 'cpsat' => 'Відпал', 'tabu' => 'Табу', default => 'Greedy' } }}
-                                                </span>
-                                                @if($objVal !== null && in_array($algo, ['annealing', 'cpsat', 'tabu']))
-                                                    <span class="text-xs text-gray-400 ml-1" title="Objective value">obj:
-                                                        {{ number_format($objVal, 1) }}</span>
+                            <tr class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $version->name }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                                    {{ $version->calendar?->name }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span @class([
+                                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' => $version->status === 'draft',
+                                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' => $version->status === 'published',
+                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' => $version->status === 'archived',
+                                        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' => $version->status === 'generating',
+                                        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' => $version->status === 'failed',
+                                    ])>
+                                        @if($version->status === 'generating')
+                                            <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                        @endif
+                                        {{ match ($version->status) {
+                                            'draft' => 'Чернетка',
+                                            'published' => 'Опубліковано',
+                                            'archived' => 'Архів',
+                                            'generating' => 'Генерується...',
+                                            'failed' => 'Помилка',
+                                            default => $version->status,
+                                        } }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                                    @php
+                                        $params = $version->generation_params ?? [];
+                                        $algo = $params['algorithm'] ?? 'greedy';
+                                        $objVal = $params['objective_value'] ?? null;
+                                        $solveTime = $params['solve_time_ms'] ?? null;
+                                    @endphp
+                                    <span @class([
+                                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' => $algo === 'greedy',
+                                        'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' => in_array($algo, ['annealing', 'cpsat']),
+                                        'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' => $algo === 'tabu',
+                                    ])>
+                                        {{ match($algo) { 'annealing', 'cpsat' => 'Відпал', 'tabu' => 'Табу', default => 'Greedy' } }}
+                                    </span>
+                                    @if($objVal !== null && in_array($algo, ['annealing', 'cpsat', 'tabu']))
+                                        <span class="text-xs text-gray-400 ml-1" title="Objective value">obj:
+                                            {{ number_format($objVal, 1) }}</span>
+                                    @endif
+                                    @if($solveTime)
+                                        <span class="text-xs text-gray-400 ml-1">{{ number_format($solveTime / 1000, 1) }}с</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $version->assignments_count }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $version->violations_count }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $version->created_at->format('d.m.Y H:i') }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <div class="flex gap-2">
+                                        @if($version->status === 'generating')
+                                            <span class="text-xs text-gray-400">
+                                                @if($version->generation_started_at)
+                                                    {{ $version->generation_started_at->diffForHumans(null, true) }}
                                                 @endif
-                                                @if($solveTime)
-                                                    <span class="text-xs text-gray-400 ml-1">{{ number_format($solveTime / 1000, 1) }}с</span>
-                                                @endif
-                                            </td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ $version->assignments_count }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ $version->violations_count }}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">{{ $version->created_at->format('d.m.Y H:i') }}</td>
-                                            <td class="px-4 py-3 text-sm">
-                                                <div class="flex gap-2">
-                                                    @if($version->status === 'generating')
-                                                        <span class="text-xs text-gray-400">
-                                                            @if($version->generation_started_at)
-                                                                {{ $version->generation_started_at->diffForHumans(null, true) }}
-                                                            @endif
-                                                        </span>
-                                                    @else
-                                                        @if($version->status === 'draft')
-                                                            <x-filament::button size="xs" color="success"
-                                                                wire:click="publishVersion({{ $version->id }})" icon="heroicon-o-check-circle">
-                                                                Опублікувати
-                                                            </x-filament::button>
-                                                        @endif
-                                                        @if(!in_array($version->status, ['archived', 'generating']))
-                                                            <x-filament::button size="xs" color="gray"
-                                                                wire:click="archiveVersion({{ $version->id }})" icon="heroicon-o-archive-box">
-                                                                Архів
-                                                            </x-filament::button>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            </span>
+                                        @else
+                                            @if($version->status === 'draft')
+                                                <x-filament::button size="xs" color="success"
+                                                    wire:click="publishVersion({{ $version->id }})" icon="heroicon-o-check-circle">
+                                                    Опублікувати
+                                                </x-filament::button>
+                                            @endif
+                                            @if(!in_array($version->status, ['archived', 'generating']))
+                                                <x-filament::button size="xs" color="gray"
+                                                    wire:click="archiveVersion({{ $version->id }})" icon="heroicon-o-archive-box">
+                                                    Архів
+                                                </x-filament::button>
+                                            @endif
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>

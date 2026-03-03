@@ -134,8 +134,10 @@ done:
 	// Build violations
 	violations := s.buildViolations(input, bestAssignments, req.Weights)
 
-	// Save results
-	if err := s.saveResults(ctx, input.TenantID, req.ScheduleID, bestAssignments, violations); err != nil {
+	// Save results with a fresh context (the solve context may be expired)
+	saveCtx, saveCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer saveCancel()
+	if err := s.saveResults(saveCtx, input.TenantID, req.ScheduleID, bestAssignments, violations); err != nil {
 		log.Printf("Failed to save Tabu results: %v", err)
 	}
 

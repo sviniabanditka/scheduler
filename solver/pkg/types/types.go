@@ -18,9 +18,10 @@ type ScheduleRequest struct {
 }
 
 type Weights struct {
-	WWindows float64 `json:"w_windows"`
-	WPrefs   float64 `json:"w_prefs"`
-	WBalance float64 `json:"w_balance"`
+	WWindows        float64 `json:"w_windows"`          // Group gap weight
+	WTeacherWindows float64 `json:"w_teacher_windows"`   // Teacher gap weight (default: lower)
+	WPrefs          float64 `json:"w_prefs"`
+	WBalance        float64 `json:"w_balance"`
 }
 
 type Scope struct {

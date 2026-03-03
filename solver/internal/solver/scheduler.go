@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -42,7 +43,13 @@ func (s *Scheduler) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		timeout = 420
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	// Reserve 15 seconds for saving results after solve completes
+	solveTimeout := timeout - 15
+	if solveTimeout < 30 {
+		solveTimeout = timeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(solveTimeout)*time.Second)
 	defer cancel()
 
 	result, err := s.solve(ctx, &req)
@@ -102,6 +109,19 @@ func (s *Scheduler) solve(ctx context.Context, req *types.ScheduleRequest) (*typ
 	}, nil
 }
 
+// busyConflict checks if a slot conflicts with existing busy entries, respecting parity.
+// A "both" assignment conflicts with "num" and "den" slots, and vice versa.
+func busyConflict(busyMap map[string]bool, day, slot int32, parity string) bool {
+	key := fmt.Sprintf("%d_%d_%s", day, slot, parity)
+	if busyMap[key] {
+		return true
+	}
+	if parity == "both" {
+		return busyMap[fmt.Sprintf("%d_%d_num", day, slot)] || busyMap[fmt.Sprintf("%d_%d_den", day, slot)]
+	}
+	return busyMap[fmt.Sprintf("%d_%d_both", day, slot)]
+}
+
 func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequest) ([]types.Assignment, []types.Violation) {
 	rand.Seed(time.Now().UnixNano())
 
@@ -122,6 +142,9 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 		groupBusy[group.ID] = make(map[string]bool)
 	}
 
+	// Track group day-parity slot lists for gap scoring
+	groupDaySlots := make(map[int64]map[dayParityKey][]int32)
+
 	activities := make([]*types.Activity, len(input.Activities))
 	for i := range input.Activities {
 		activities[i] = &input.Activities[i]
@@ -131,39 +154,33 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 		return activities[i].RequiredSlotsPerPeriod > activities[j].RequiredSlotsPerPeriod
 	})
 
+	allParities := collectParities(input)
+	effectiveParities := []string{"both"}
+	if contains(allParities, "num") || contains(allParities, "den") {
+		effectiveParities = []string{"num", "den"}
+	}
+
 	for _, activity := range activities {
 		placed := 0
 		requiredSlots := int(activity.RequiredSlotsPerPeriod)
 
-		shuffledSlots := make([]int, len(input.TimeSlots))
-		for i := range shuffledSlots {
-			shuffledSlots[i] = i
-		}
-		rand.Shuffle(len(shuffledSlots), func(i, j int) {
-			shuffledSlots[i], shuffledSlots[j] = shuffledSlots[j], shuffledSlots[i]
-		})
+		compatibleRooms := getCompatibleRooms(input.Rooms, activity)
 
-		for _, slotIdx := range shuffledSlots {
-			if placed >= requiredSlots {
-				break
-			}
+		// For each slot needed, find the best feasible candidate with fresh scores
+		for placed < requiredSlots {
+			bestScore := math.MaxFloat64
+			bestSlotIdx := -1
+			bestRoomIdx := -1
 
-			slot := input.TimeSlots[slotIdx]
-			slotKey := fmt.Sprintf("%d_%d_%s", slot.DayOfWeek, slot.SlotIndex, slot.Parity)
+			for si, slot := range input.TimeSlots {
+				day := slot.DayOfWeek
+				slotIndex := slot.SlotIndex
+				parity := slot.Parity
 
-			compatibleRooms := getCompatibleRooms(input.Rooms, activity)
-			rand.Shuffle(len(compatibleRooms), func(i, j int) {
-				compatibleRooms[i], compatibleRooms[j] = compatibleRooms[j], compatibleRooms[i]
-			})
-
-			for _, room := range compatibleRooms {
-				if roomBusy[room.ID][slotKey] {
-					continue
-				}
-
+				// Check group availability with parity
 				groupAvailable := true
 				for _, gid := range activity.GroupIDs {
-					if groupBusy[gid][slotKey] {
+					if busyConflict(groupBusy[gid], day, slotIndex, parity) {
 						groupAvailable = false
 						break
 					}
@@ -172,9 +189,10 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 					continue
 				}
 
+				// Check teacher availability with parity
 				teacherAvailable := true
 				for _, tid := range activity.TeacherIDs {
-					if teacherBusy[tid][slotKey] {
+					if busyConflict(teacherBusy[tid], day, slotIndex, parity) {
 						teacherAvailable = false
 						break
 					}
@@ -183,33 +201,70 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 					continue
 				}
 
-				if !s.isSlotAvailable(activity, slot, input.Unavailabilities) {
+				// Check unavailabilities (teacher + group; room checked per-room below)
+				if !s.isSlotAvailable(activity, slot, input.Unavailabilities, 0) {
 					continue
 				}
 
-				assignment := types.Assignment{
-					ScheduleID: input.ScheduleID,
-					ActivityID: activity.ID,
-					DayOfWeek:  slot.DayOfWeek,
-					SlotIndex:  slot.SlotIndex,
-					Parity:     slot.Parity,
-					RoomID:     room.ID,
-					Locked:     false,
-					Source:     "solver",
-				}
-				assignments = append(assignments, assignment)
+				for ri, room := range compatibleRooms {
+					if busyConflict(roomBusy[room.ID], day, slotIndex, parity) {
+						continue
+					}
 
-				roomBusy[room.ID][slotKey] = true
-				for _, gid := range activity.GroupIDs {
-					groupBusy[gid][slotKey] = true
-				}
-				for _, tid := range activity.TeacherIDs {
-					teacherBusy[tid][slotKey] = true
-				}
+					// Check room unavailability
+					if !s.isSlotAvailable(activity, slot, input.Unavailabilities, room.ID) {
+						continue
+					}
 
-				placed++
-				break
+					// Score with current state (fresh after each placement)
+					score := s.scoreCandidate(activity, day, slotIndex, parity, groupDaySlots, groupBusy, effectiveParities, input, req.Weights)
+
+					if score < bestScore {
+						bestScore = score
+						bestSlotIdx = si
+						bestRoomIdx = ri
+					}
+				}
 			}
+
+			if bestSlotIdx < 0 {
+				break // No feasible slot found
+			}
+
+			slot := input.TimeSlots[bestSlotIdx]
+			room := compatibleRooms[bestRoomIdx]
+			slotKeyStr := fmt.Sprintf("%d_%d_%s", slot.DayOfWeek, slot.SlotIndex, slot.Parity)
+
+			assignments = append(assignments, types.Assignment{
+				ScheduleID: input.ScheduleID,
+				ActivityID: activity.ID,
+				DayOfWeek:  slot.DayOfWeek,
+				SlotIndex:  slot.SlotIndex,
+				Parity:     slot.Parity,
+				RoomID:     room.ID,
+				Locked:     false,
+				Source:     "solver",
+			})
+
+			roomBusy[room.ID][slotKeyStr] = true
+			for _, gid := range activity.GroupIDs {
+				groupBusy[gid][slotKeyStr] = true
+				for _, ep := range effectiveParities {
+					if slot.Parity != ep && slot.Parity != "both" {
+						continue
+					}
+					dpk := dayParityKey{day: slot.DayOfWeek, parity: ep}
+					if groupDaySlots[gid] == nil {
+						groupDaySlots[gid] = make(map[dayParityKey][]int32)
+					}
+					groupDaySlots[gid][dpk] = append(groupDaySlots[gid][dpk], slot.SlotIndex)
+				}
+			}
+			for _, tid := range activity.TeacherIDs {
+				teacherBusy[tid][slotKeyStr] = true
+			}
+
+			placed++
 		}
 
 		if placed < requiredSlots {
@@ -228,17 +283,122 @@ func (s *Scheduler) optimize(input *types.ScheduleInput, req *types.ScheduleRequ
 	return assignments, violations
 }
 
+// scoreCandidate computes an incremental score for placing an activity at a given slot.
+// Lower score = better placement.
+func (s *Scheduler) scoreCandidate(
+	activity *types.Activity,
+	day, slotIndex int32,
+	parity string,
+	groupDaySlots map[int64]map[dayParityKey][]int32,
+	groupBusy map[int64]map[string]bool,
+	effectiveParities []string,
+	input *types.ScheduleInput,
+	weights types.Weights,
+) float64 {
+	score := 0.0
 
-func (s *Scheduler) isSlotAvailable(activity *types.Activity, slot types.TimeSlot, unavails []types.Unavailability) bool {
+	// 1. Gap penalty (quadratic): for each group, how does adding this slot affect gaps on this day/parity?
+	for _, gid := range activity.GroupIDs {
+		for _, ep := range effectiveParities {
+			if parity != ep && parity != "both" {
+				continue
+			}
+			dpk := dayParityKey{day: day, parity: ep}
+			existing := groupDaySlots[gid][dpk]
+
+			gapsBefore := computeGapsQuadratic(existing)
+			trial := append(append([]int32{}, existing...), slotIndex)
+			gapsAfter := computeGapsQuadratic(trial)
+			delta := gapsAfter - gapsBefore
+			score += delta * weights.WWindows
+		}
+	}
+
+	// 2. Balance penalty: prefer days with fewer existing assignments for this group
+	for _, gid := range activity.GroupIDs {
+		dayLoad := 0
+		if groupDaySlots[gid] != nil {
+			for dpk, slots := range groupDaySlots[gid] {
+				if dpk.day == day {
+					dayLoad += len(slots)
+				}
+			}
+		}
+		score += float64(dayLoad) * weights.WBalance * 0.5
+	}
+
+	// 3. Preference penalty: check if this slot violates teacher preferences
+	for _, pref := range input.Preferences {
+		if pref.Weight >= 0 {
+			continue
+		}
+		if pref.DayOfWeek != day || pref.SlotIndex != slotIndex {
+			continue
+		}
+		for _, tid := range activity.TeacherIDs {
+			if tid == pref.TeacherID {
+				if parityMatches(pref.Parity, parity) {
+					score += float64(abs32(pref.Weight)) * weights.WPrefs * 0.1
+				}
+			}
+		}
+	}
+
+	return score
+}
+
+// computeGapsQuadratic computes the sum of gap^2 for a set of slot indices.
+func computeGapsQuadratic(slots []int32) float64 {
+	if len(slots) < 2 {
+		return 0
+	}
+	sorted := make([]int, len(slots))
+	for i, s := range slots {
+		sorted[i] = int(s)
+	}
+	sort.Ints(sorted)
+	// Deduplicate
+	deduped := []int{sorted[0]}
+	for i := 1; i < len(sorted); i++ {
+		if sorted[i] != sorted[i-1] {
+			deduped = append(deduped, sorted[i])
+		}
+	}
+	total := 0.0
+	for i := 1; i < len(deduped); i++ {
+		gap := deduped[i] - deduped[i-1] - 1
+		if gap > 0 {
+			total += float64(gap * gap)
+		}
+	}
+	return total
+}
+
+
+func (s *Scheduler) isSlotAvailable(activity *types.Activity, slot types.TimeSlot, unavails []types.Unavailability, roomID int64) bool {
 	for _, unav := range unavails {
-		if unav.EntityType == "teacher" {
+		if unav.DayOfWeek != slot.DayOfWeek || unav.SlotIndex != slot.SlotIndex {
+			continue
+		}
+		if !s.matchesParity(unav.Parity, slot.Parity) {
+			continue
+		}
+		switch unav.EntityType {
+		case "teacher":
 			for _, tid := range activity.TeacherIDs {
-				if unav.EntityID == tid &&
-					unav.DayOfWeek == slot.DayOfWeek &&
-					unav.SlotIndex == slot.SlotIndex &&
-					s.matchesParity(unav.Parity, slot.Parity) {
+				if unav.EntityID == tid {
 					return false
 				}
+			}
+		case "group":
+			for _, gid := range activity.GroupIDs {
+				if unav.EntityID == gid {
+					return false
+				}
+			}
+		case "room":
+			if roomID > 0 && unav.EntityID == roomID {
+				return false
 			}
 		}
 	}
@@ -255,9 +415,23 @@ func (s *Scheduler) matchesParity(unavParity, slotParity string) bool {
 func (s *Scheduler) checkWindows(input *types.ScheduleInput, groupBusy, teacherBusy map[int64]map[string]bool) []types.Violation {
 	var violations []types.Violation
 
+	// Collect effective parities
+	allParities := collectParities(input)
+	effectiveParities := []string{"both"}
+	if contains(allParities, "num") || contains(allParities, "den") {
+		effectiveParities = []string{"num", "den"}
+	}
+
+	// Check each group (deduplicated across activities)
+	checkedGroups := make(map[int64]bool)
 	for _, activity := range input.Activities {
 		for _, groupID := range activity.GroupIDs {
-			daySlots := make(map[int32][]int32)
+			if checkedGroups[groupID] {
+				continue
+			}
+			checkedGroups[groupID] = true
+
+			dayParitySlots := make(map[dayParityKey][]int32)
 			for key, busy := range groupBusy[groupID] {
 				if !busy {
 					continue
@@ -267,19 +441,40 @@ func (s *Scheduler) checkWindows(input *types.ScheduleInput, groupBusy, teacherB
 					continue
 				}
 				var day, slot int32
-				fmt.Sscanf(key, "%d_%d", &day, &slot)
-				daySlots[day] = append(daySlots[day], slot)
+				fmt.Sscanf(parts[0], "%d", &day)
+				fmt.Sscanf(parts[1], "%d", &slot)
+				keyParity := parts[2]
+
+				for _, ep := range effectiveParities {
+					if keyParity != ep && keyParity != "both" {
+						continue
+					}
+					dpk := dayParityKey{day: day, parity: ep}
+					dayParitySlots[dpk] = append(dayParitySlots[dpk], slot)
+				}
 			}
 
-			for day, slots := range daySlots {
+			for dpk, slots := range dayParitySlots {
+				// Deduplicate and sort
 				sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+				deduped := []int32{slots[0]}
 				for i := 1; i < len(slots); i++ {
-					if slots[i]-slots[i-1] > 1 {
+					if slots[i] != slots[i-1] {
+						deduped = append(deduped, slots[i])
+					}
+				}
+				for i := 1; i < len(deduped); i++ {
+					gap := deduped[i] - deduped[i-1] - 1
+					if gap > 0 {
 						violations = append(violations, types.Violation{
-							ActivityID: activity.ID,
-							Code:       "GROUP_WINDOW",
-							Severity:   "soft",
-							Meta:       map[string]string{"day": fmt.Sprint(day), "gap": fmt.Sprint(slots[i] - slots[i-1] - 1)},
+							Code:     "GROUP_WINDOW",
+							Severity: "soft",
+							Meta: map[string]string{
+								"group_id": fmt.Sprint(groupID),
+								"day":      fmt.Sprint(dpk.day),
+								"parity":   dpk.parity,
+								"gap":      fmt.Sprint(gap),
+							},
 						})
 					}
 				}

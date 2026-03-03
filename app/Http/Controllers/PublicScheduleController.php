@@ -153,41 +153,59 @@ class PublicScheduleController extends Controller
             4 => 'Четвер', 5 => "П'ятниця", 6 => 'Субота', 7 => 'Неділя',
         ];
 
+        // Get unique slot indices from time_slots (deduplicate parity variants)
+        $uniqueSlotIndices = $timeSlots->pluck('slot_index')->unique()->sort()->values();
+
         for ($date = $effectiveStart->copy(); $date->lte($effectiveEnd); $date->addDay()) {
             $dayOfWeek = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek;
             $dateStr = $date->format('Y-m-d');
+
+            // Determine parity for this date
+            $dateParity = $calendar->getParityForDate($date);
 
             $dateRange[] = [
                 'date' => $dateStr,
                 'formatted' => $date->format('d.m.Y'),
                 'day_name' => $dayNames[$dayOfWeek] ?? 'Невідомо',
                 'day_of_week' => $dayOfWeek,
+                'parity' => $dateParity,
             ];
 
-            foreach ($timeSlots as $slot) {
-                $scheduleMatrix[$dateStr][$slot->slot_index] = null;
+            foreach ($uniqueSlotIndices as $slotIndex) {
+                $scheduleMatrix[$dateStr][$slotIndex] = null;
             }
 
             foreach ($assignments as $assignment) {
-                if ($assignment->day_of_week === $dayOfWeek) {
-                    $activity = $assignment->activity;
-                    $teachers = $activity->teachers->pluck('name')->join(', ');
-
-                    $scheduleMatrix[$dateStr][$assignment->slot_index] = [
-                        'id' => $assignment->id,
-                        'subject' => $activity->subject->name ?? $activity->title,
-                        'subject_type' => $activity->activity_type,
-                        'teacher' => $teachers,
-                        'classroom' => $assignment->room->code ?? '',
-                        'room_title' => $assignment->room->title ?? '',
-                        'parity' => $assignment->parity,
-                    ];
+                if ($assignment->day_of_week !== $dayOfWeek) {
+                    continue;
                 }
+
+                // Filter by parity: 'both' matches any week, otherwise must match date's parity
+                $assignmentParity = $assignment->parity ?? 'both';
+                if ($assignmentParity !== 'both' && $dateParity !== 'both' && $assignmentParity !== $dateParity) {
+                    continue;
+                }
+
+                $activity = $assignment->activity;
+                $teachers = $activity->teachers->pluck('name')->join(', ');
+
+                $scheduleMatrix[$dateStr][$assignment->slot_index] = [
+                    'id' => $assignment->id,
+                    'subject' => $activity->subject->name ?? $activity->title,
+                    'subject_type' => $activity->activity_type,
+                    'teacher' => $teachers,
+                    'classroom' => $assignment->room->code ?? '',
+                    'room_title' => $assignment->room->title ?? '',
+                    'parity' => $assignmentParity,
+                ];
             }
         }
 
         $formattedSlots = [];
         foreach ($timeSlots as $slot) {
+            if (isset($formattedSlots[$slot->slot_index])) {
+                continue; // Skip duplicate parity variants
+            }
             $start = $slot->start_time instanceof \DateTimeInterface
                 ? $slot->start_time->format('H:i')
                 : \Carbon\Carbon::parse($slot->start_time)->format('H:i');

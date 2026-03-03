@@ -1,7 +1,9 @@
 package solver
 
 import (
+	"fmt"
 	"math/rand"
+	"sort"
 
 	"scheduler/pkg/types"
 )
@@ -26,11 +28,12 @@ type SAState struct {
 type MoveType int
 
 const (
-	MoveSwapSlot    MoveType = iota // Change day/slot of one assignment
-	MoveSwapRoom    MoveType = iota // Change room of one assignment
-	MoveSwapTwo     MoveType = iota // Swap slots between two assignments
-	MoveUnplace     MoveType = iota // Remove an assignment
-	MoveReplace     MoveType = iota // Remove and re-place an assignment in a new slot
+	MoveSwapSlot MoveType = iota // Change day/slot of one assignment
+	MoveSwapRoom MoveType = iota // Change room of one assignment
+	MoveSwapTwo  MoveType = iota // Swap slots between two assignments
+	MoveUnplace  MoveType = iota // Remove an assignment
+	MoveReplace  MoveType = iota // Remove and re-place an assignment in a new slot
+	MoveCompact  MoveType = iota // Move assignment to adjacent slot to close gaps
 )
 
 // Move represents a neighborhood move
@@ -168,11 +171,22 @@ func (st *SAState) isFeasible(act *types.Activity, day, slot int32, parity strin
 		if !parityConflicts(unav.Parity, parity) {
 			continue
 		}
-		if unav.EntityType == "teacher" {
+		switch unav.EntityType {
+		case "teacher":
 			for _, tid := range act.TeacherIDs {
 				if unav.EntityID == tid {
 					return false
 				}
+			}
+		case "group":
+			for _, gid := range act.GroupIDs {
+				if unav.EntityID == gid {
+					return false
+				}
+			}
+		case "room":
+			if roomID > 0 && unav.EntityID == roomID {
+				return false
 			}
 		}
 	}
@@ -268,7 +282,7 @@ func (st *SAState) addToBusy(a types.Assignment) {
 // applyMove applies a move in place and returns the move info for undoing
 func (st *SAState) applyMove(m *Move) {
 	switch m.Type {
-	case MoveSwapSlot:
+	case MoveSwapSlot, MoveCompact:
 		a := &st.Assignments[m.Idx1]
 		st.removeFromBusy(*a)
 		a.DayOfWeek = m.NewDay
@@ -298,7 +312,7 @@ func (st *SAState) applyMove(m *Move) {
 // undoMove reverts a move
 func (st *SAState) undoMove(m *Move) {
 	switch m.Type {
-	case MoveSwapSlot:
+	case MoveSwapSlot, MoveCompact:
 		a := &st.Assignments[m.Idx1]
 		st.removeFromBusy(*a)
 		a.DayOfWeek = m.OldDay
@@ -331,13 +345,25 @@ func randomSlot(input *types.ScheduleInput, rng *rand.Rand) types.TimeSlot {
 }
 
 // randomMove generates a random feasible move
+// Probabilities: 25% SwapSlot, 20% SwapRoom, 25% SwapTwo, 30% Compact
 func randomMove(st *SAState, rng *rand.Rand) *Move {
 	if len(st.Assignments) == 0 {
 		return nil
 	}
 
 	for attempts := 0; attempts < 50; attempts++ {
-		moveType := rng.Intn(3) // 0=SwapSlot, 1=SwapRoom, 2=SwapTwo
+		r := rng.Intn(100)
+		var moveType int
+		switch {
+		case r < 25:
+			moveType = 0 // SwapSlot
+		case r < 45:
+			moveType = 1 // SwapRoom
+		case r < 70:
+			moveType = 2 // SwapTwo
+		default:
+			moveType = 3 // Compact
+		}
 
 		switch moveType {
 		case 0: // SwapSlot
@@ -445,6 +471,108 @@ func randomMove(st *SAState, rng *rand.Rand) *Move {
 					Old2Slot:   a2.SlotIndex,
 					Old2Parity: a2.Parity,
 				}
+			}
+
+		case 3: // Compact — move an assignment to an adjacent slot to close gaps
+			move := st.generateCompactMove(rng)
+			if move != nil {
+				return move
+			}
+		}
+	}
+
+	return nil
+}
+
+// generateCompactMove finds a group with gaps and tries to move an assignment to close them.
+func (st *SAState) generateCompactMove(rng *rand.Rand) *Move {
+	if len(st.Assignments) == 0 {
+		return nil
+	}
+
+	// Pick a random assignment
+	idx := rng.Intn(len(st.Assignments))
+	a := st.Assignments[idx]
+	if a.Locked {
+		return nil
+	}
+
+	act := st.getActivity(a.ActivityID)
+	if act == nil || len(act.GroupIDs) == 0 {
+		return nil
+	}
+
+	// Find other slots occupied by this group on the same day/parity
+	gid := act.GroupIDs[0]
+	busyMap := st.GroupBusy[gid]
+	if busyMap == nil {
+		return nil
+	}
+
+	// Collect slots for this group on same day and compatible parity
+	var occupied []int32
+	for key, busy := range busyMap {
+		if !busy {
+			continue
+		}
+		var d, sl int32
+		var p string
+		n, _ := fmt.Sscanf(key, "%d_%d_%s", &d, &sl, &p)
+		if n < 2 {
+			continue
+		}
+		if d != a.DayOfWeek {
+			continue
+		}
+		if !parityConflicts(p, a.Parity) {
+			continue
+		}
+		occupied = append(occupied, sl)
+	}
+
+	if len(occupied) < 2 {
+		return nil
+	}
+
+	sort.Slice(occupied, func(i, j int) bool { return occupied[i] < occupied[j] })
+
+	// Find adjacent slot targets to close gaps
+	// Try moving current assignment to be adjacent to its neighbors
+	targets := []int32{}
+	minSlot := occupied[0]
+	maxSlot := occupied[len(occupied)-1]
+
+	if a.SlotIndex > minSlot+1 {
+		// Try moving closer to min
+		targets = append(targets, minSlot+1)
+	}
+	if a.SlotIndex < maxSlot-1 {
+		// Try moving closer to max
+		targets = append(targets, maxSlot-1)
+	}
+	// Also try the slot just before min or just after max (extend the block)
+	if minSlot > 1 {
+		targets = append(targets, minSlot-1)
+	}
+	targets = append(targets, maxSlot+1)
+
+	// Shuffle targets
+	rng.Shuffle(len(targets), func(i, j int) { targets[i], targets[j] = targets[j], targets[i] })
+
+	for _, newSlot := range targets {
+		if newSlot == a.SlotIndex || newSlot < 1 {
+			continue
+		}
+		if st.isFeasible(act, a.DayOfWeek, newSlot, a.Parity, a.RoomID, idx) {
+			return &Move{
+				Type:      MoveCompact,
+				Idx1:      idx,
+				OldDay:    a.DayOfWeek,
+				OldSlot:   a.SlotIndex,
+				OldParity: a.Parity,
+				NewDay:    a.DayOfWeek,
+				NewSlot:   newSlot,
+				NewParity: a.Parity,
 			}
 		}
 	}

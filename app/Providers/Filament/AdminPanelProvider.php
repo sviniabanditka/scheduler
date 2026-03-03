@@ -12,6 +12,7 @@ use App\Filament\Widgets\StatsOverviewWidget;
 use App\Filament\Widgets\ScheduleChartWidget;
 use App\Filament\Widgets\RecentSchedulesWidget;
 use App\Filament\Widgets\SubjectTypeChartWidget;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -38,6 +39,17 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->brandName('Scheduler SaaS')
+            ->navigationItems([
+                NavigationItem::make('Публічна сторінка')
+                    ->url(function (): string {
+                        $tenant = auth()->user()?->tenant;
+                        return $tenant ? $tenant->getPublicUrl() : '#';
+                    }, shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-globe-alt')
+                    ->group('Розклад')
+                    ->sort(10)
+                    ->visible(fn () => auth()->check() && auth()->user()->tenant),
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

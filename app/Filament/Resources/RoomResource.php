@@ -35,11 +35,6 @@ class RoomResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('tenant_id')
-                    ->label('Університет')
-                    ->relationship('tenant', 'name')
-                    ->required(),
-
                 Forms\Components\TextInput::make('code')
                     ->label('Код аудиторії')
                     ->required()
@@ -100,8 +95,9 @@ class RoomResource extends Resource
                         default => $state,
                     }),
 
-                Tables\Columns\BooleanColumn::make('active')
-                    ->label('Активна'),
+                Tables\Columns\IconColumn::make('active')
+                    ->label('Активна')
+                    ->boolean(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('room_type')

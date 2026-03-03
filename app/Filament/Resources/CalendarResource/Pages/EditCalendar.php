@@ -16,4 +16,19 @@ class EditCalendar extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Repeater stores items with UUID keys — normalize to sequential array
+        if (!empty($data['slot_times'])) {
+            $data['slot_times'] = array_values($data['slot_times']);
+        }
+
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->record->syncTimeSlots();
+    }
 }

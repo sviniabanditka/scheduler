@@ -35,6 +35,7 @@ class ScheduleGenerationPage extends Page
     public ?int $calendar_id = null;
     public string $algorithm = 'greedy';
     public float $w_windows = 10;
+    public float $w_teacher_windows = 1;
     public float $w_prefs = 5;
     public float $w_balance = 2;
     public int $timeout = 420;
@@ -52,6 +53,7 @@ class ScheduleGenerationPage extends Page
         $weights = SoftWeight::first();
         if ($weights) {
             $this->w_windows = $weights->w_windows;
+            $this->w_teacher_windows = $weights->w_teacher_windows ?? 1;
             $this->w_prefs = $weights->w_prefs;
             $this->w_balance = $weights->w_balance;
         }
@@ -66,7 +68,7 @@ class ScheduleGenerationPage extends Page
                     ->schema([
                         Select::make('calendar_id')
                             ->label('Календар')
-                            ->options(Calendar::pluck('name', 'id'))
+                            ->options(fn () => Calendar::pluck('name', 'id'))
                             ->required()
                             ->placeholder('Оберіть календар'),
 
@@ -99,11 +101,18 @@ class ScheduleGenerationPage extends Page
                     ->description('Чим більше значення — тим важливіше обмеження')
                     ->schema([
                         TextInput::make('w_windows')
-                            ->label('Мінімізація вікон')
+                            ->label('Вікна груп')
                             ->numeric()
                             ->step(0.5)
                             ->default(10)
-                            ->helperText('Штраф за порожні пари між заняттями'),
+                            ->helperText('Штраф за порожні пари між заняттями для груп'),
+
+                        TextInput::make('w_teacher_windows')
+                            ->label('Вікна викладачів')
+                            ->numeric()
+                            ->step(0.5)
+                            ->default(1)
+                            ->helperText('Штраф за порожні пари між заняттями для викладачів'),
 
                         TextInput::make('w_prefs')
                             ->label('Преференції викладачів')
@@ -119,7 +128,7 @@ class ScheduleGenerationPage extends Page
                             ->default(2)
                             ->helperText('Рівномірний розподіл по днях'),
                     ])
-                    ->columns(3),
+                    ->columns(4),
             ]);
     }
 
@@ -137,6 +146,7 @@ class ScheduleGenerationPage extends Page
 
         $weights = [
             'w_windows' => $this->w_windows,
+            'w_teacher_windows' => $this->w_teacher_windows,
             'w_prefs' => $this->w_prefs,
             'w_balance' => $this->w_balance,
         ];

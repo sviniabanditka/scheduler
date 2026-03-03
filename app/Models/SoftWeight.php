@@ -17,12 +17,14 @@ class SoftWeight extends Model
     protected $fillable = [
         'tenant_id',
         'w_windows',
+        'w_teacher_windows',
         'w_prefs',
         'w_balance',
     ];
 
     protected $casts = [
         'w_windows' => 'integer',
+        'w_teacher_windows' => 'integer',
         'w_prefs' => 'integer',
         'w_balance' => 'integer',
     ];

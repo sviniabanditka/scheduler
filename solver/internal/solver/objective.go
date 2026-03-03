@@ -16,10 +16,16 @@ func calculateScore(input *types.ScheduleInput, assignments []types.Assignment, 
 	// Penalty for unplaced activities
 	score += countUnplacedPenalty(input, assignments) * 1000.0
 
-	// Window gaps
+	// Window gaps (separate group and teacher)
+	groupGaps, teacherGaps := countWindowGapsSeparate(input, assignments)
 	if weights.WWindows > 0 {
-		score += float64(countWindowGaps(input, assignments)) * weights.WWindows
+		score += float64(groupGaps) * weights.WWindows
 	}
+	teacherW := weights.WTeacherWindows
+	if teacherW == 0 {
+		teacherW = 1.0 // Default teacher window weight
+	}
+	score += float64(teacherGaps) * teacherW
 
 	// Preference violations
 	if weights.WPrefs > 0 {
@@ -52,17 +58,14 @@ func countUnplacedPenalty(input *types.ScheduleInput, assignments []types.Assign
 	return penalty
 }
 
-// countWindowGaps counts the number of gap slots (empty slots between occupied ones)
-// for all groups and teachers on each day.
-func countWindowGaps(input *types.ScheduleInput, assignments []types.Assignment) int {
-	// Build activity lookup
+// countWindowGapsSeparate counts gap slots for groups and teachers separately.
+func countWindowGapsSeparate(input *types.ScheduleInput, assignments []types.Assignment) (groupGaps, teacherGaps int) {
 	actMap := make(map[int64]*types.Activity)
 	for i := range input.Activities {
 		actMap[input.Activities[i].ID] = &input.Activities[i]
 	}
 
-	// Group slots
-	groupSlots := make(map[int64]map[dayParityKey][]int32) // groupID -> {day,parity} -> slot indices
+	groupSlots := make(map[int64]map[dayParityKey][]int32)
 	teacherSlots := make(map[int64]map[dayParityKey][]int32)
 
 	allParities := collectParities(input)
@@ -98,11 +101,13 @@ func countWindowGaps(input *types.ScheduleInput, assignments []types.Assignment)
 		}
 	}
 
-	totalGaps := 0
-	totalGaps += countGapsInMap(groupSlots)
-	totalGaps += countGapsInMap(teacherSlots)
+	return countGapsInMap(groupSlots), countGapsInMap(teacherSlots)
+}
 
-	return totalGaps
+// countWindowGaps returns total gaps (for backwards compatibility with buildViolations).
+func countWindowGaps(input *types.ScheduleInput, assignments []types.Assignment) int {
+	g, t := countWindowGapsSeparate(input, assignments)
+	return g + t
 }
 
 type dayParityKey struct {
@@ -133,7 +138,7 @@ func countGapsInMap(slotsMap map[int64]map[dayParityKey][]int32) int {
 				for i := 1; i < len(deduped); i++ {
 					gap := deduped[i] - deduped[i-1] - 1
 					if gap > 0 {
-						gaps += gap
+						gaps += gap * gap // Quadratic: a 3-slot gap costs 9, not 3
 					}
 				}
 			}
