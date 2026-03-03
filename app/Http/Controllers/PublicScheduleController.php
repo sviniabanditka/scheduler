@@ -188,7 +188,13 @@ class PublicScheduleController extends Controller
 
         $formattedSlots = [];
         foreach ($timeSlots as $slot) {
-            $formattedSlots[$slot->slot_index] = $slot->start_time . '-' . $slot->end_time;
+            $start = $slot->start_time instanceof \DateTimeInterface
+                ? $slot->start_time->format('H:i')
+                : \Carbon\Carbon::parse($slot->start_time)->format('H:i');
+            $end = $slot->end_time instanceof \DateTimeInterface
+                ? $slot->end_time->format('H:i')
+                : \Carbon\Carbon::parse($slot->end_time)->format('H:i');
+            $formattedSlots[$slot->slot_index] = $start . ' – ' . $end;
         }
 
         return response()->json([

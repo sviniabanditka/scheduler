@@ -61,6 +61,19 @@ class ScheduleManagement extends Page
     public ?int $createSlotIndex = null;
     public ?string $createParity = 'both';
 
+    // Stats Add Modal (for missing activities)
+    public bool $showStatsAddModal = false;
+    public ?int $statsActivityId = null;
+    public ?int $statsAddRoomId = null;
+    public ?int $statsAddDayOfWeek = null;
+    public ?int $statsAddSlotIndex = null;
+    public ?string $statsAddParity = 'both';
+
+    // Stats Delete Modal (for excess activities)
+    public bool $showStatsDeleteModal = false;
+    public ?int $statsDeleteActivityId = null;
+    public array $statsAssignmentsList = [];
+
     public function mount(): void
     {
         // Default to latest version
@@ -205,7 +218,7 @@ class ScheduleManagement extends Page
             ];
 
             foreach ($timeSlots as $slot) {
-                $matrix[$dateStr][$slot->slot_index] = null;
+                $matrix[$dateStr][$slot->slot_index] = [];
             }
 
             foreach ($assignments as $assignment) {
@@ -216,7 +229,7 @@ class ScheduleManagement extends Page
                     $teachers = $activity->teachers->pluck('name')->join(', ');
                     $groups = $activity->groups->pluck('name')->join(', ');
 
-                    $matrix[$dateStr][$assignment->slot_index] = [
+                    $matrix[$dateStr][$assignment->slot_index][] = [
                         'id' => $assignment->id,
                         'subject' => $activity->subject->name ?? '—',
                         'type' => $activity->activity_type,
@@ -489,6 +502,7 @@ class ScheduleManagement extends Page
             elseif ($diff > 0) $status = 'excess';
 
             $stats[] = [
+                'activity_id' => $activity->id,
                 'subject' => $activity->subject->name ?? '—',
                 'type' => $activity->activity_type,
                 'groups' => $activity->groups->pluck('name')->join(', '),
@@ -501,6 +515,143 @@ class ScheduleManagement extends Page
         }
 
         return $stats;
+    }
+
+    // --- Stats Add Modal (missing activities) ---
+
+    public function openStatsAddModal(int $activityId): void
+    {
+        $this->statsActivityId = $activityId;
+        $this->statsAddRoomId = null;
+        $this->statsAddDayOfWeek = null;
+        $this->statsAddSlotIndex = null;
+        $this->statsAddParity = 'both';
+        $this->showStatsAddModal = true;
+    }
+
+    public function closeStatsAddModal(): void
+    {
+        $this->showStatsAddModal = false;
+        $this->statsActivityId = null;
+    }
+
+    public function createStatsAssignment(): void
+    {
+        if (!$this->selectedVersion || !$this->statsActivityId || !$this->statsAddDayOfWeek || !$this->statsAddSlotIndex) {
+            Notification::make()->title('Заповніть всі поля')->warning()->send();
+            return;
+        }
+
+        $version = ScheduleVersion::find($this->selectedVersion);
+        if (!$version) return;
+
+        $activity = Activity::with(['teachers', 'groups'])->find($this->statsActivityId);
+        if (!$activity) return;
+
+        $teacherIds = $activity->teachers->pluck('id')->toArray();
+        $groupIds = $activity->groups->pluck('id')->toArray();
+
+        $conflict = $this->checkConflicts(
+            $version->id,
+            null,
+            $this->statsAddDayOfWeek,
+            $this->statsAddSlotIndex,
+            $this->statsAddParity,
+            $this->statsAddRoomId,
+            $teacherIds,
+            $groupIds,
+        );
+
+        if ($conflict) {
+            Notification::make()->title($conflict['title'])->body($conflict['body'])->danger()->send();
+            return;
+        }
+
+        ScheduleAssignment::create([
+            'tenant_id' => $version->tenant_id,
+            'schedule_version_id' => $version->id,
+            'activity_id' => $this->statsActivityId,
+            'day_of_week' => $this->statsAddDayOfWeek,
+            'slot_index' => $this->statsAddSlotIndex,
+            'parity' => $this->statsAddParity,
+            'room_id' => $this->statsAddRoomId,
+            'locked' => false,
+            'source' => 'manual',
+        ]);
+
+        $this->showStatsAddModal = false;
+        $this->statsActivityId = null;
+
+        Notification::make()
+            ->title('Додано!')
+            ->body('Заняття додано до розкладу')
+            ->success()
+            ->send();
+    }
+
+    // --- Stats Delete Modal (excess activities) ---
+
+    public function openStatsDeleteModal(int $activityId): void
+    {
+        $this->statsDeleteActivityId = $activityId;
+
+        if (!$this->selectedVersion) return;
+
+        $assignments = ScheduleAssignment::where('schedule_version_id', $this->selectedVersion)
+            ->where('activity_id', $activityId)
+            ->with(['room'])
+            ->get();
+
+        $dayNames = [
+            1 => 'Пн', 2 => 'Вт', 3 => 'Ср',
+            4 => 'Чт', 5 => "Пт", 6 => 'Сб', 7 => 'Нд',
+        ];
+
+        $this->statsAssignmentsList = $assignments->map(fn ($a) => [
+            'id' => $a->id,
+            'day_name' => $dayNames[$a->day_of_week] ?? '?',
+            'slot_index' => $a->slot_index,
+            'parity' => $a->parity,
+            'room' => $a->room->code ?? '—',
+            'locked' => $a->locked,
+        ])->toArray();
+
+        $this->showStatsDeleteModal = true;
+    }
+
+    public function closeStatsDeleteModal(): void
+    {
+        $this->showStatsDeleteModal = false;
+        $this->statsDeleteActivityId = null;
+        $this->statsAssignmentsList = [];
+    }
+
+    public function deleteStatsAssignment(int $assignmentId): void
+    {
+        $assignment = ScheduleAssignment::find($assignmentId);
+        if (!$assignment) return;
+
+        if ($assignment->locked) {
+            Notification::make()
+                ->title('Заблоковано')
+                ->body('Цей запис заблоковано і не може бути видалено')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $assignment->delete();
+
+        // Refresh the list
+        if ($this->statsDeleteActivityId) {
+            $this->openStatsDeleteModal($this->statsDeleteActivityId);
+        }
+
+        Notification::make()
+            ->title('Видалено')
+            ->body('Заняття видалено з розкладу')
+            ->success()
+            ->send();
     }
 
     // --- Conflict Checking ---

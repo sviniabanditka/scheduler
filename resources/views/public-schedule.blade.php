@@ -183,6 +183,35 @@
                     <div class="text-5xl mb-4">📋</div>
                     <p class="text-lg" x-text="scheduleMessage"></p>
                 </div>
+
+                <!-- Legend -->
+                <div x-show="!loadingSchedule && scheduleData && dateRange.length > 0"
+                    class="px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Типи
+                            занять:</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm bg-blue-500"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Лекція</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm bg-green-500"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Практика</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm bg-amber-500"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Лабораторна</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm bg-red-500"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Семінар</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm bg-purple-500"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">ПК</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -240,7 +269,10 @@
                 },
 
                 formatDateISO(date) {
-                    return date.toISOString().split('T')[0];
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${d}`;
                 },
 
                 formatDisplayDate(dateStr) {

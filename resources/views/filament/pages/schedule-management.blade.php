@@ -116,10 +116,19 @@
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                 @foreach($stats as $row)
+                                    @if($row['status'] !== 'ok')
                                     <tr @class([
                                         'bg-red-50 dark:bg-red-900/10' => $row['status'] === 'missing',
                                         'bg-yellow-50 dark:bg-yellow-900/10' => $row['status'] === 'excess',
-                                    ])>
+                                        'cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20' => $row['status'] === 'missing',
+                                        'cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/20' => $row['status'] === 'excess',
+                                    ])
+                                        @if($row['status'] === 'missing')
+                                            wire:click="openStatsAddModal({{ $row['activity_id'] }})"
+                                        @elseif($row['status'] === 'excess')
+                                            wire:click="openStatsDeleteModal({{ $row['activity_id'] }})"
+                                        @endif
+                                    >
                                         <td class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">{{ $row['subject'] }}</td>
                                         <td class="px-4 py-2 text-sm text-gray-500">{{ $row['type'] }}</td>
                                         <td class="px-4 py-2 text-sm text-gray-500">{{ $row['groups'] }}</td>
@@ -130,12 +139,12 @@
                                             <span @class([
                                                 'text-red-600 dark:text-red-400' => $row['status'] === 'missing',
                                                 'text-yellow-600 dark:text-yellow-400' => $row['status'] === 'excess',
-                                                'text-green-600 dark:text-green-400' => $row['status'] === 'ok',
                                             ])>
                                                 {{ $row['diff'] >= 0 ? '+' : '' }}{{ $row['diff'] }}
                                             </span>
                                         </td>
                                     </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -181,47 +190,51 @@
                                 <tr>
                                     <td class="px-3 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 whitespace-nowrap sticky left-0 bg-white dark:bg-gray-800 z-10">
                                         <div class="text-gray-400">{{ $slot->slot_index }} пара</div>
-                                        <div>{{ substr($slot->start_time, 0, 5) }}-{{ substr($slot->end_time, 0, 5) }}</div>
+                                        <div>{{ $slot->start_time->format('H:i') }}-{{ $slot->end_time->format('H:i') }}</div>
                                     </td>
                                     @foreach($data['dateRange'] as $day)
-                                        @php $item = $data['matrix'][$day['date']][$slot->slot_index] ?? null; @endphp
-                                        <td class="px-1 py-1 border-b dark:border-gray-700 schedule-cell">
-                                            @if($item)
-                                                <div class="schedule-item rounded-lg p-2 text-xs cursor-pointer relative group
-                                                    type-{{ $item['type'] ?? 'default' }}"
-                                                    wire:click="openEditModal({{ $item['id'] }})">
-                                                    <div class="font-semibold truncate">{{ $item['subject'] }}</div>
-                                                    <div class="truncate opacity-80">{{ $item['teacher'] }}</div>
-                                                    @if($item['groups'])
-                                                        <div class="truncate opacity-70 text-[10px]">{{ $item['groups'] }}</div>
-                                                    @endif
-                                                    @if($item['room'])
-                                                        <div class="truncate opacity-70">🏫 {{ $item['room'] }}</div>
-                                                    @endif
-                                                    @if($item['parity'] !== 'both')
-                                                        <span class="absolute top-1 right-1 text-[9px] px-1 rounded bg-white/50 dark:bg-black/30">
-                                                            {{ $item['parity'] === 'num' ? 'Ч' : 'З' }}
-                                                        </span>
-                                                    @endif
-                                                    @if($item['locked'])
-                                                        <span class="absolute bottom-1 right-1 text-[10px]">🔒</span>
-                                                    @endif
-                                                    {{-- Hover actions --}}
-                                                    <div class="absolute top-0 right-0 hidden group-hover:flex gap-0.5 p-0.5">
-                                                        <button wire:click.stop="toggleLock({{ $item['id'] }})"
-                                                            class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-white dark:hover:bg-gray-700"
-                                                            title="{{ $item['locked'] ? 'Розблокувати' : 'Заблокувати' }}">
-                                                            {{ $item['locked'] ? '🔓' : '🔒' }}
-                                                        </button>
-                                                        @if(!$item['locked'])
-                                                            <button wire:click.stop="deleteAssignment({{ $item['id'] }})"
-                                                                wire:confirm="Видалити це заняття?"
-                                                                class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-red-100 dark:hover:bg-red-900/50"
-                                                                title="Видалити">
-                                                                🗑️
-                                                            </button>
-                                                        @endif
-                                                    </div>
+                                        @php $items = $data['matrix'][$day['date']][$slot->slot_index] ?? []; @endphp
+                                        <td class="px-1 py-1 border-b dark:border-gray-700 schedule-cell align-top">
+                                            @if(count($items) > 0)
+                                                <div class="space-y-1">
+                                                    @foreach($items as $item)
+                                                        <div class="schedule-item rounded-lg p-2 text-xs cursor-pointer relative group
+                                                            type-{{ $item['type'] ?? 'default' }}"
+                                                            wire:click="openEditModal({{ $item['id'] }})">
+                                                            <div class="font-semibold truncate">{{ $item['subject'] }}</div>
+                                                            <div class="truncate opacity-80">{{ $item['teacher'] }}</div>
+                                                            @if($item['groups'])
+                                                                <div class="truncate opacity-70 text-[10px]">{{ $item['groups'] }}</div>
+                                                            @endif
+                                                            @if($item['room'])
+                                                                <div class="truncate opacity-70">🏫 {{ $item['room'] }}</div>
+                                                            @endif
+                                                            @if($item['parity'] !== 'both')
+                                                                <span class="absolute top-1 right-1 text-[9px] px-1 rounded bg-white/50 dark:bg-black/30">
+                                                                    {{ $item['parity'] === 'num' ? 'Ч' : 'З' }}
+                                                                </span>
+                                                            @endif
+                                                            @if($item['locked'])
+                                                                <span class="absolute bottom-1 right-1 text-[10px]">🔒</span>
+                                                            @endif
+                                                            {{-- Hover actions --}}
+                                                            <div class="absolute top-0 right-0 hidden group-hover:flex gap-0.5 p-0.5">
+                                                                <button wire:click.stop="toggleLock({{ $item['id'] }})"
+                                                                    class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-white dark:hover:bg-gray-700"
+                                                                    title="{{ $item['locked'] ? 'Розблокувати' : 'Заблокувати' }}">
+                                                                    {{ $item['locked'] ? '🔓' : '🔒' }}
+                                                                </button>
+                                                                @if(!$item['locked'])
+                                                                    <button wire:click.stop="deleteAssignment({{ $item['id'] }})"
+                                                                        wire:confirm="Видалити це заняття?"
+                                                                        class="p-0.5 rounded bg-white/80 dark:bg-gray-800/80 text-xs hover:bg-red-100 dark:hover:bg-red-900/50"
+                                                                        title="Видалити">
+                                                                        🗑️
+                                                                    </button>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
                                                 </div>
                                             @else
                                                 <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 p-2 text-center text-gray-400 dark:text-gray-500 text-xs h-12 flex items-center justify-center cursor-pointer hover:border-primary-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition group"
@@ -314,7 +327,7 @@
                             <select wire:model="modalSlotIndex"
                                 class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                                 @foreach($this->timeSlots as $slot)
-                                    <option value="{{ $slot->slot_index }}">{{ $slot->slot_index }} пара ({{ substr($slot->start_time, 0, 5) }}-{{ substr($slot->end_time, 0, 5) }})</option>
+                                    <option value="{{ $slot->slot_index }}">{{ $slot->slot_index }} пара ({{ $slot->start_time->format('H:i') }}-{{ $slot->end_time->format('H:i') }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -421,6 +434,146 @@
                         <button wire:click="createAssignment"
                             class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
                             Додати
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Stats Add Modal (for missing activities) --}}
+    @if($showStatsAddModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" x-data x-init="$el.focus()" @keydown.escape="$wire.closeStatsAddModal()">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="fixed inset-0 bg-gray-900/50 transition-opacity" wire:click="closeStatsAddModal"></div>
+
+                <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 z-10">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Додати заняття до слоту</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Оберіть слот для заняття, якого не вистачає
+                        </p>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        {{-- Day --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">День тижня</label>
+                            <select wire:model="statsAddDayOfWeek"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Оберіть день</option>
+                                <option value="1">Понеділок</option>
+                                <option value="2">Вівторок</option>
+                                <option value="3">Середа</option>
+                                <option value="4">Четвер</option>
+                                <option value="5">П'ятниця</option>
+                                <option value="6">Субота</option>
+                                <option value="7">Неділя</option>
+                            </select>
+                        </div>
+
+                        {{-- Slot --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Пара</label>
+                            <select wire:model="statsAddSlotIndex"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Оберіть пару</option>
+                                @foreach($this->timeSlots as $slot)
+                                    <option value="{{ $slot->slot_index }}">{{ $slot->slot_index }} пара ({{ $slot->start_time->format('H:i') }}-{{ $slot->end_time->format('H:i') }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Room --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Аудиторія</label>
+                            <select wire:model="statsAddRoomId"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Без аудиторії</option>
+                                @foreach($this->rooms as $room)
+                                    <option value="{{ $room->id }}">{{ $room->code }} — {{ $room->title }} ({{ $room->capacity }} місць)</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Parity --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Парність</label>
+                            <select wire:model="statsAddParity"
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="both">Обидва тижні</option>
+                                <option value="num">Чисельник</option>
+                                <option value="den">Знаменник</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                        <button wire:click="closeStatsAddModal"
+                            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
+                            Скасувати
+                        </button>
+                        <button wire:click="createStatsAssignment"
+                            class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium shadow-sm">
+                            Додати
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Stats Delete Modal (for excess activities) --}}
+    @if($showStatsDeleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" x-data x-init="$el.focus()" @keydown.escape="$wire.closeStatsDeleteModal()">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="fixed inset-0 bg-gray-900/50 transition-opacity" wire:click="closeStatsDeleteModal"></div>
+
+                <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 z-10">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Видалити зайве заняття</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Оберіть заняття для видалення (надлишок)
+                        </p>
+                    </div>
+
+                    <div class="p-6">
+                        @if(count($statsAssignmentsList) > 0)
+                            <div class="space-y-2">
+                                @foreach($statsAssignmentsList as $sa)
+                                    <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-600 {{ $sa['locked'] ? 'opacity-50' : 'hover:bg-red-50 dark:hover:bg-red-900/10' }}">
+                                        <div class="text-sm">
+                                            <span class="font-medium text-gray-900 dark:text-white">{{ $sa['day_name'] }},</span>
+                                            <span class="text-gray-600 dark:text-gray-300">{{ $sa['slot_index'] }} пара</span>
+                                            <span class="text-gray-500 dark:text-gray-400">· {{ $sa['room'] }}</span>
+                                            @if($sa['parity'] !== 'both')
+                                                <span class="text-xs px-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                                    {{ $sa['parity'] === 'num' ? 'Ч' : 'З' }}
+                                                </span>
+                                            @endif
+                                            @if($sa['locked'])
+                                                <span class="text-xs">🔒</span>
+                                            @endif
+                                        </div>
+                                        @if(!$sa['locked'])
+                                            <button wire:click="deleteStatsAssignment({{ $sa['id'] }})"
+                                                wire:confirm="Видалити це заняття?"
+                                                class="px-3 py-1 rounded-lg border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 text-xs font-medium transition">
+                                                🗑️ Видалити
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-center text-gray-500 dark:text-gray-400 py-4">Немає призначених занять</p>
+                        @endif
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                        <button wire:click="closeStatsDeleteModal"
+                            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">
+                            Закрити
                         </button>
                     </div>
                 </div>
