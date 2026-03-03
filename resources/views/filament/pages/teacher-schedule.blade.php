@@ -18,18 +18,37 @@
     </style>
 
     <div class="space-y-6">
-        {{-- Date Range Filter --}}
+        {{-- Week Navigation --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Від</label>
-                    <input type="date" wire:model.live="startDate"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
+            <div class="max-w-sm mx-auto">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">Тиждень</label>
+                <div class="flex items-center gap-2">
+                    <button wire:click="prevWeek" @if(!$this->canGoPrev) disabled @endif
+                        class="flex-shrink-0 p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        title="Попередній тиждень">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+
+                    <div class="flex-1 text-center px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm whitespace-nowrap">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $weekLabel }}</span>
+                        @if($this->weekParityLabel)
+                            <span class="text-xs font-medium {{ $this->weekParityLabel === 'Чисельник' ? 'text-indigo-500 dark:text-indigo-400' : 'text-amber-500 dark:text-amber-400' }}">
+                                ({{ $this->weekParityLabel === 'Чисельник' ? 'Ч' : 'З' }})
+                            </span>
+                        @endif
+                    </div>
+
+                    <button wire:click="nextWeek" @if(!$this->canGoNext) disabled @endif
+                        class="flex-shrink-0 p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        title="Наступний тиждень">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">До</label>
-                    <input type="date" wire:model.live="endDate"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-primary-500">
+                <div class="mt-2 text-center">
+                    <button wire:click="currentWeek"
+                        class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 transition-colors">
+                        Поточний тиждень
+                    </button>
                 </div>
             </div>
         </div>
@@ -57,6 +76,11 @@
                                     <th class="px-3 py-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase border-b dark:border-gray-600 schedule-cell">
                                         <div>{{ $day['day_name'] }}</div>
                                         <div class="text-xs font-normal">{{ $day['formatted'] }}</div>
+                                        @if(!empty($day['parity']) && $day['parity'] !== 'both')
+                                            <div class="text-[10px] font-medium {{ $day['parity'] === 'num' ? 'text-indigo-500 dark:text-indigo-400' : 'text-amber-500 dark:text-amber-400' }}">
+                                                {{ $day['parity'] === 'num' ? 'чис.' : 'знам.' }}
+                                            </div>
+                                        @endif
                                     </th>
                                 @endforeach
                             </tr>
@@ -75,15 +99,20 @@
                                                 <div class="schedule-item rounded-lg p-2 text-xs cursor-pointer relative group
                                                     type-{{ $item['type'] ?? 'default' }}"
                                                     wire:click="openRescheduleModal({{ $item['id'] }})">
-                                                    <div class="font-semibold truncate">{{ $item['subject'] }}</div>
+                                                    <div class="font-semibold truncate">
+                                                        {{ $item['subject'] }}
+                                                        @if($item['parity'] !== 'both')
+                                                            <span class="inline-flex items-center ml-0.5 px-1 py-px rounded text-[9px] font-medium leading-none
+                                                                {{ $item['parity'] === 'num'
+                                                                    ? 'bg-indigo-200/60 text-indigo-800 dark:bg-indigo-400/20 dark:text-indigo-300'
+                                                                    : 'bg-amber-200/60 text-amber-800 dark:bg-amber-400/20 dark:text-amber-300' }}">
+                                                                {{ $item['parity'] === 'num' ? 'Ч' : 'З' }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
                                                     <div class="truncate opacity-80">{{ $item['groups'] }}</div>
                                                     @if($item['room'])
-                                                        <div class="truncate opacity-70">{{ $item['room'] }}</div>
-                                                    @endif
-                                                    @if($item['parity'] !== 'both')
-                                                        <span class="absolute top-1 right-1 text-[9px] px-1 rounded bg-white/50 dark:bg-black/30">
-                                                            {{ $item['parity'] === 'num' ? 'Ч' : 'З' }}
-                                                        </span>
+                                                        <div class="truncate opacity-70 text-[10px]">{{ $item['room'] }}</div>
                                                     @endif
                                                 </div>
                                             @else

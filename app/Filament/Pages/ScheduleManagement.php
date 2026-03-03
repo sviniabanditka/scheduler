@@ -40,6 +40,7 @@ class ScheduleManagement extends Page
     public ?int $selectedGroup = null;
     public ?string $startDate = null;
     public ?string $endDate = null;
+    public ?string $weekLabel = null;
 
     // Stats
     public bool $showStats = false;
@@ -95,19 +96,30 @@ class ScheduleManagement extends Page
         $calStart = $calendar->start_date;
         $calEnd = $calendar->end_date;
 
-        // If today is within calendar, use current week
         if ($today->gte($calStart) && $today->lte($calEnd)) {
-            $dayOfWeek = $today->dayOfWeek === 0 ? 7 : $today->dayOfWeek;
-            $monday = $today->copy()->subDays($dayOfWeek - 1);
+            $monday = $today->copy()->startOfWeek(Carbon::MONDAY);
             $sunday = $monday->copy()->addDays(6);
 
             $this->startDate = max($monday, $calStart)->format('Y-m-d');
             $this->endDate = min($sunday, $calEnd)->format('Y-m-d');
         } else {
-            // Use first week of calendar
-            $this->startDate = $calStart->format('Y-m-d');
-            $endOfFirstWeek = $calStart->copy()->addDays(6);
-            $this->endDate = min($endOfFirstWeek, $calEnd)->format('Y-m-d');
+            $monday = $calStart->copy()->startOfWeek(Carbon::MONDAY);
+            if ($monday->lt($calStart)) $monday = $calStart->copy();
+            $sunday = $monday->copy()->startOfWeek(Carbon::MONDAY)->addDays(6);
+
+            $this->startDate = $monday->format('Y-m-d');
+            $this->endDate = min($sunday, $calEnd)->format('Y-m-d');
+        }
+
+        $this->updateWeekLabel();
+    }
+
+    protected function updateWeekLabel(): void
+    {
+        if ($this->startDate && $this->endDate) {
+            $start = Carbon::parse($this->startDate);
+            $end = Carbon::parse($this->endDate);
+            $this->weekLabel = $start->format('d.m') . ' — ' . $end->format('d.m');
         }
     }
 
@@ -117,6 +129,83 @@ class ScheduleManagement extends Page
             $version = ScheduleVersion::find($this->selectedVersion);
             $this->setDefaultDates($version);
         }
+    }
+
+    public function prevWeek(): void
+    {
+        if (!$this->startDate || !$this->calendar) return;
+
+        $monday = Carbon::parse($this->startDate)->startOfWeek(Carbon::MONDAY)->subWeek();
+        $sunday = $monday->copy()->addDays(6);
+        $calStart = $this->calendar->start_date;
+        $calEnd = $this->calendar->end_date;
+
+        if ($sunday->lt($calStart)) return;
+
+        $this->startDate = max($monday, $calStart)->format('Y-m-d');
+        $this->endDate = min($sunday, $calEnd)->format('Y-m-d');
+        $this->updateWeekLabel();
+    }
+
+    public function nextWeek(): void
+    {
+        if (!$this->startDate || !$this->calendar) return;
+
+        $monday = Carbon::parse($this->startDate)->startOfWeek(Carbon::MONDAY)->addWeek();
+        $sunday = $monday->copy()->addDays(6);
+        $calStart = $this->calendar->start_date;
+        $calEnd = $this->calendar->end_date;
+
+        if ($monday->gt($calEnd)) return;
+
+        $this->startDate = max($monday, $calStart)->format('Y-m-d');
+        $this->endDate = min($sunday, $calEnd)->format('Y-m-d');
+        $this->updateWeekLabel();
+    }
+
+    public function currentWeek(): void
+    {
+        if (!$this->calendar) return;
+
+        $today = Carbon::today();
+        $calStart = $this->calendar->start_date;
+        $calEnd = $this->calendar->end_date;
+
+        if ($today->gte($calStart) && $today->lte($calEnd)) {
+            $monday = $today->copy()->startOfWeek(Carbon::MONDAY);
+        } elseif ($today->lt($calStart)) {
+            $monday = $calStart->copy()->startOfWeek(Carbon::MONDAY);
+            if ($monday->lt($calStart)) $monday = $calStart->copy();
+        } else {
+            $monday = $calEnd->copy()->startOfWeek(Carbon::MONDAY);
+        }
+
+        $sunday = $monday->copy()->startOfWeek(Carbon::MONDAY)->addDays(6);
+        $this->startDate = max($monday, $calStart)->format('Y-m-d');
+        $this->endDate = min($sunday, $calEnd)->format('Y-m-d');
+        $this->updateWeekLabel();
+    }
+
+    public function getCanGoPrevProperty(): bool
+    {
+        if (!$this->startDate || !$this->calendar) return false;
+        $monday = Carbon::parse($this->startDate)->startOfWeek(Carbon::MONDAY)->subWeek();
+        $sunday = $monday->copy()->addDays(6);
+        return $sunday->gte($this->calendar->start_date);
+    }
+
+    public function getCanGoNextProperty(): bool
+    {
+        if (!$this->startDate || !$this->calendar) return false;
+        $monday = Carbon::parse($this->startDate)->startOfWeek(Carbon::MONDAY)->addWeek();
+        return $monday->lte($this->calendar->end_date);
+    }
+
+    public function getWeekParityLabelProperty(): ?string
+    {
+        if (!$this->calendar || !$this->calendar->parity_enabled || !$this->startDate) return null;
+        $parity = $this->calendar->getParityForDate(Carbon::parse($this->startDate));
+        return $parity === 'num' ? 'Чисельник' : 'Знаменник';
     }
 
     // Computed properties
@@ -210,11 +299,14 @@ class ScheduleManagement extends Page
             $dayOfWeek = $date->dayOfWeek === 0 ? 7 : $date->dayOfWeek;
             $dateStr = $date->format('Y-m-d');
 
+            $dateParity = $calendar->getParityForDate($date);
+
             $dateRange[] = [
                 'date' => $dateStr,
                 'formatted' => $date->format('d.m'),
                 'day_name' => $dayNames[$dayOfWeek] ?? '?',
                 'day_of_week' => $dayOfWeek,
+                'parity' => $dateParity,
             ];
 
             foreach ($timeSlots as $slot) {
@@ -222,26 +314,34 @@ class ScheduleManagement extends Page
             }
 
             foreach ($assignments as $assignment) {
-                if ($assignment->day_of_week === $dayOfWeek) {
-                    $activity = $assignment->activity;
-                    if (!$activity) continue;
-
-                    $teachers = $activity->teachers->pluck('name')->join(', ');
-                    $groups = $activity->groups->pluck('name')->join(', ');
-
-                    $matrix[$dateStr][$assignment->slot_index][] = [
-                        'id' => $assignment->id,
-                        'subject' => $activity->subject->name ?? '—',
-                        'type' => $activity->activity_type,
-                        'teacher' => $teachers,
-                        'groups' => $groups,
-                        'room' => $assignment->room->code ?? '',
-                        'room_title' => $assignment->room->title ?? '',
-                        'parity' => $assignment->parity,
-                        'locked' => $assignment->locked,
-                        'source' => $assignment->source,
-                    ];
+                if ($assignment->day_of_week !== $dayOfWeek) {
+                    continue;
                 }
+
+                // Filter by parity: show only assignments matching this date's parity
+                $ap = $assignment->parity;
+                if ($ap !== 'both' && $dateParity !== 'both' && $ap !== $dateParity) {
+                    continue;
+                }
+
+                $activity = $assignment->activity;
+                if (!$activity) continue;
+
+                $teachers = $activity->teachers->pluck('name')->join(', ');
+                $groups = $activity->groups->pluck('name')->join(', ');
+
+                $matrix[$dateStr][$assignment->slot_index][] = [
+                    'id' => $assignment->id,
+                    'subject' => $activity->subject->name ?? '—',
+                    'type' => $activity->activity_type,
+                    'teacher' => $teachers,
+                    'groups' => $groups,
+                    'room' => $assignment->room->code ?? '',
+                    'room_title' => $assignment->room->title ?? '',
+                    'parity' => $assignment->parity,
+                    'locked' => $assignment->locked,
+                    'source' => $assignment->source,
+                ];
             }
         }
 
