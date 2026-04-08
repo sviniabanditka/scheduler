@@ -27,19 +27,27 @@ spec:
       labels:
         app: scheduler-app
     spec:
+      securityContext:
+        fsGroup: 1000
       initContainers:
+        - name: copy-app
+          image: registry.sviniabanditka.com/scheduler-app:latest
+          securityContext:
+            runAsUser: 0
+          command: ["sh", "-c", "cp -r /var/www/. /app-shared/ && chown -R 1000:1000 /app-shared"]
+          volumeMounts:
+            - name: app-code
+              mountPath: /app-shared
         - name: migrate
           image: registry.sviniabanditka.com/scheduler-app:latest
+          workingDir: /var/www
           command: ["php", "artisan", "migrate", "--force"]
           envFrom:
             - secretRef:
                 name: scheduler-env
-        - name: copy-app
-          image: registry.sviniabanditka.com/scheduler-app:latest
-          command: ["sh", "-c", "cp -a /var/www/. /app-shared/"]
           volumeMounts:
             - name: app-code
-              mountPath: /app-shared
+              mountPath: /var/www
       containers:
         - name: php-fpm
           image: registry.sviniabanditka.com/scheduler-app:latest

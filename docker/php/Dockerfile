@@ -42,10 +42,12 @@ RUN groupadd -g 1000 www
 RUN useradd -u 1000 -ms /bin/bash -g www www
 
 # Copy existing application directory contents
-COPY . /var/www
-
-# Copy existing application directory permissions
 COPY --chown=www:www . /var/www
+
+WORKDIR /var/www
+
+# Install composer dependencies (production)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Copy Xdebug configuration
 COPY docker/php/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
