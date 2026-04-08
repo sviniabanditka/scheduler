@@ -31,7 +31,8 @@ jobs:
       - name: Build and push Solver
         uses: docker/build-push-action@v6
         with:
-          context: ./solver
+          context: .
+          file: ./solver/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/scheduler-solver:${{ github.sha }},${{ env.REGISTRY }}/scheduler-solver:latest
 
