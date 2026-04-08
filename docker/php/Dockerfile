@@ -31,9 +31,6 @@ RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Install Xdebug for development
-RUN pecl install xdebug && docker-php-ext-enable xdebug
-
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -46,11 +43,14 @@ COPY --chown=www:www . /var/www
 
 WORKDIR /var/www
 
-# Install composer dependencies (production)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+# Ensure storage and cache directories exist with correct permissions
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R www:www storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Copy Xdebug configuration
-COPY docker/php/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+# Install composer dependencies (production)
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    && php artisan package:discover --ansi
 
 # Change current user to www
 USER www
