@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-queue-worker
+  namespace: scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler-queue-worker
+  template:
+    metadata:
+      labels:
+        app: scheduler-queue-worker
+    spec:
+      containers:
+        - name: queue-worker
+          image: registry.sviniabanditka.com/scheduler-app:latest
+          command: ["php", "artisan", "queue:work", "redis", "--tries=3", "--timeout=90", "--sleep=3"]
+          envFrom:
+            - secretRef:
+                name: scheduler-env
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command:
+                - php
+                - -r
+                - "echo 'alive';"
+            initialDelaySeconds: 10
+            periodSeconds: 30

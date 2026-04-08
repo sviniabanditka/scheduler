@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-app
+  namespace: scheduler
+  labels:
+    app: scheduler-app
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: scheduler-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-app
+  namespace: scheduler
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: scheduler-app
+  template:
+    metadata:
+      labels:
+        app: scheduler-app
+    spec:
+      initContainers:
+        - name: migrate
+          image: registry.sviniabanditka.com/scheduler-app:latest
+          command: ["php", "artisan", "migrate", "--force"]
+          envFrom:
+            - secretRef:
+                name: scheduler-env
+        - name: copy-app
+          image: registry.sviniabanditka.com/scheduler-app:latest
+          command: ["sh", "-c", "cp -a /var/www/. /app-shared/"]
+          volumeMounts:
+            - name: app-code
+              mountPath: /app-shared
+      containers:
+        - name: php-fpm
+          image: registry.sviniabanditka.com/scheduler-app:latest
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - secretRef:
+                name: scheduler-env
+          volumeMounts:
+            - name: app-code
+              mountPath: /var/www
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: app-code
+              mountPath: /var/www
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: app-code
+          emptyDir: {}
+        - name: nginx-config
+          configMap:
+            name: nginx-config

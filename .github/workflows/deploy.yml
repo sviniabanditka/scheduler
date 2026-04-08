@@ -1,0 +1,53 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main, master]
+
+env:
+  REGISTRY: registry.sviniabanditka.com
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push App
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/php/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/scheduler-app:${{ github.sha }},${{ env.REGISTRY }}/scheduler-app:latest
+
+      - name: Build and push Solver
+        uses: docker/build-push-action@v6
+        with:
+          context: ./solver
+          push: true
+          tags: ${{ env.REGISTRY }}/scheduler-solver:${{ github.sha }},${{ env.REGISTRY }}/scheduler-solver:latest
+
+      - name: Deploy to k3s
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ssh.sviniabanditka.com
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            kubectl -n scheduler set image deployment/scheduler-app php-fpm=${{ env.REGISTRY }}/scheduler-app:${{ github.sha }}
+            kubectl -n scheduler set image deployment/scheduler-app copy-app=${{ env.REGISTRY }}/scheduler-app:${{ github.sha }}
+            kubectl -n scheduler set image deployment/scheduler-app migrate=${{ env.REGISTRY }}/scheduler-app:${{ github.sha }}
+            kubectl -n scheduler set image deployment/scheduler-queue-worker queue-worker=${{ env.REGISTRY }}/scheduler-app:${{ github.sha }}
+            kubectl -n scheduler set image deployment/scheduler-solver solver=${{ env.REGISTRY }}/scheduler-solver:${{ github.sha }}
+            kubectl -n scheduler rollout status deployment/scheduler-app --timeout=180s
+            kubectl -n scheduler rollout status deployment/scheduler-queue-worker --timeout=120s
+            kubectl -n scheduler rollout status deployment/scheduler-solver --timeout=120s
